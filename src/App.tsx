@@ -98,6 +98,11 @@ function RouteNormalizer() {
     if (rawPath !== withoutTrailing) {
       navigate(withoutTrailing + location.search + location.hash, { replace: true });
     }
+
+    // 4. Meta Pixel SPA PageView tracking on route change
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'PageView');
+    }
   }, [location.pathname, location.search, location.hash, navigate]);
 
   return null;

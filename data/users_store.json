@@ -1,0 +1,40 @@
+{
+  "users": {
+    "testuser45": {
+      "id": "testuser45",
+      "username": "felipe",
+      "displayName": "Test",
+      "credits": 110,
+      "xp": 0,
+      "level": 1,
+      "createdAt": "2026-10-01T10:32:01.374Z",
+      "updatedAt": "2026-10-01T10:32:03.488Z"
+    }
+  },
+  "transactions": [
+    {
+      "id": "tx_1790850721374_lzupl",
+      "userId": "testuser45",
+      "type": "BONUS",
+      "amount": 200,
+      "service": "WELCOME_BONUS",
+      "createdAt": "2026-10-01T10:32:01.374Z"
+    },
+    {
+      "id": "tx_1790850721385_oppkd",
+      "userId": "testuser45",
+      "type": "DEBIT",
+      "amount": 45,
+      "service": "instagram_acceleration",
+      "createdAt": "2026-10-01T10:32:01.385Z"
+    },
+    {
+      "id": "tx_1790850723488_25dur",
+      "userId": "testuser45",
+      "type": "DEBIT",
+      "amount": 45,
+      "service": "instagram_acceleration",
+      "createdAt": "2026-10-01T10:32:03.488Z"
+    }
+  ]
+}

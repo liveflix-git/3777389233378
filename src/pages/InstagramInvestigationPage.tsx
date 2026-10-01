@@ -150,7 +150,7 @@ export const InstagramInvestigationPage: React.FC = () => {
 
   // Trigger Accelerate Flow - Check real credit balance first
   const handleAccelerateClick = () => {
-    if (user.credits < 30) {
+    if (user.credits < 45) {
       setShowInsufficientCreditsModal(true);
     } else {
       setShowAccelerateModal(true);
@@ -673,7 +673,7 @@ export const InstagramInvestigationPage: React.FC = () => {
                         ) : (
                           <>
                             <Zap className="w-4 h-4 fill-amber-300 text-amber-300" />
-                            <span>Acelerar por 30 créditos</span>
+                            <span>Acelerar por 45 créditos</span>
                           </>
                         )}
                       </button>
@@ -707,12 +707,12 @@ export const InstagramInvestigationPage: React.FC = () => {
             </div>
 
             <h3 className="text-base sm:text-lg font-extrabold text-white">
-              Acelerar análise por 30 créditos?
+              Acelerar análise por 45 créditos?
             </h3>
 
             <div className="p-3 rounded-xl bg-[#05090C] border border-[#20282D] text-xs text-[#9CA3AF] space-y-1">
               <p>Saldo atual: <strong className="text-white">{user.credits} créditos</strong></p>
-              <p>Após a operação: <strong className="text-[#3B82F6]">{Math.max(0, user.credits - 30)} créditos</strong></p>
+              <p>Após a operação: <strong className="text-[#3B82F6]">{Math.max(0, user.credits - 45)} créditos</strong></p>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
@@ -756,7 +756,7 @@ export const InstagramInvestigationPage: React.FC = () => {
             </h3>
 
             <p className="text-xs sm:text-sm text-[#9CA3AF] leading-relaxed">
-              Você precisa de 30 créditos para acelerar esta análise. Seu saldo atual é de {user.credits} créditos.
+              Você precisa de 45 créditos para acelerar esta análise. Seu saldo atual é de {user.credits} créditos.
             </p>
 
             <div className="flex items-center gap-2 pt-2">

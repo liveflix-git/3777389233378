@@ -141,6 +141,7 @@ export async function spendCreditsApi(
   service: string
 ): Promise<{ success: boolean; credits: number; cost?: number; error?: string }> {
   const userId = getOrInitUserId();
+  const user = getDashboardUser();
   try {
     const res = await fetch('/api/user/spend', {
       method: 'POST',
@@ -148,7 +149,7 @@ export async function spendCreditsApi(
         'Content-Type': 'application/json',
         'X-User-Id': userId,
       },
-      body: JSON.stringify({ service }),
+      body: JSON.stringify({ service, currentCredits: user.credits }),
     });
 
     const contentType = res.headers.get('content-type') || '';
@@ -173,13 +174,13 @@ export async function spendCreditsApi(
     console.warn('[EspiaSession] Error spending credits via API, using local storage fallback:', err);
   }
 
-  // Fallback for static Netlify host
-  const user = getDashboardUser();
-  const cost = service === 'whatsapp' ? 40 : service === 'facebook' ? 45 : service === 'location' ? 60 : service === '2fa_bypass' ? 80 : 30;
-  if (user.credits < cost) {
-    return { success: false, credits: user.credits, error: 'INSUFFICIENT_CREDITS' };
+  // Fallback for static Netlify/local host
+  const fallbackUser = getDashboardUser();
+  const cost = service === 'whatsapp' ? 40 : service === 'facebook' ? 45 : service === 'location' ? 60 : service === '2fa_bypass' ? 80 : 45;
+  if (fallbackUser.credits < cost) {
+    return { success: false, credits: fallbackUser.credits, error: 'INSUFFICIENT_CREDITS' };
   }
-  const newCredits = user.credits - cost;
+  const newCredits = fallbackUser.credits - cost;
   saveDashboardUser({ credits: newCredits });
   return { success: true, credits: newCredits, cost };
 }
@@ -269,6 +270,12 @@ export async function accelerateAnalysisApi(
   service = 'instagram'
 ): Promise<{ success: boolean; analysis?: AnalysisData; credits?: number; error?: string; message?: string }> {
   const userId = getOrInitUserId();
+  const user = getDashboardUser();
+
+  if (user.credits < 45) {
+    return { success: false, credits: user.credits, error: 'INSUFFICIENT_CREDITS', message: 'Créditos insuficientes.' };
+  }
+
   try {
     const res = await fetch('/api/analysis/accelerate', {
       method: 'POST',
@@ -276,7 +283,7 @@ export async function accelerateAnalysisApi(
         'Content-Type': 'application/json',
         'X-User-Id': userId,
       },
-      body: JSON.stringify({ service }),
+      body: JSON.stringify({ service, currentCredits: user.credits }),
     });
 
     const contentType = res.headers.get('content-type') || '';
@@ -291,12 +298,7 @@ export async function accelerateAnalysisApi(
     console.warn('[EspiaSession] Failed to accelerate analysis via API:', err);
   }
 
-  const user = getDashboardUser();
-  if (user.credits < 30) {
-    return { success: false, credits: user.credits, error: 'INSUFFICIENT_CREDITS', message: 'Créditos insuficientes.' };
-  }
-
-  const newCredits = user.credits - 30;
+  const newCredits = user.credits - 45;
   saveDashboardUser({ credits: newCredits });
 
   const active = await getActiveAnalysisApi(service);
@@ -420,6 +422,11 @@ export function saveDashboardUser(user: Partial<DashboardUser>): void {
     const current = getDashboardUser();
     const updated = { ...current, ...user };
     localStorage.setItem(DASHBOARD_USER_KEY, JSON.stringify(updated));
+    if (typeof updated.credits === 'number' && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('espia_credits_updated', { detail: { credits: updated.credits } })
+      );
+    }
   } catch (err) {
     console.error('[EspiaSession] Failed to save dashboard user:', err);
   }

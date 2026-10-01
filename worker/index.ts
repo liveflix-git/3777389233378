@@ -324,6 +324,130 @@ async function handleInstagramProfileImage(request: Request): Promise<Response> 
   }
 }
 
+async function handleAccelerate(request: Request): Promise<Response> {
+  const jsonHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+  };
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, X-User-Id',
+      },
+    });
+  }
+
+  const ACCELERATE_COST = 45;
+
+  try {
+    const body = (await request.json().catch(() => ({}))) as any;
+    const service = body?.service || 'instagram';
+    const currentCredits = typeof body?.currentCredits === 'number' ? body.currentCredits : undefined;
+
+    if (typeof currentCredits === 'number' && currentCredits < ACCELERATE_COST) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'INSUFFICIENT_CREDITS',
+          cost: ACCELERATE_COST,
+          credits: currentCredits,
+          message: 'Créditos insuficientes para acelerar (necessário 45 créditos).',
+        }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
+    const newBalance = typeof currentCredits === 'number' ? currentCredits - ACCELERATE_COST : undefined;
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        cost: ACCELERATE_COST,
+        credits: newBalance,
+        analysis: {
+          service,
+          status: 'ACCELERATED',
+          accelerated: true,
+          updatedAt: new Date().toISOString(),
+        },
+      }),
+      { status: 200, headers: jsonHeaders }
+    );
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'ACCELERATION_FAILED',
+        message: err.message || 'Erro ao processar aceleração.',
+      }),
+      { status: 500, headers: jsonHeaders }
+    );
+  }
+}
+
+async function handleSpendCredits(request: Request): Promise<Response> {
+  const jsonHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+  };
+
+  const SERVICE_COSTS: Record<string, number> = {
+    instagram: 0,
+    whatsapp: 40,
+    facebook: 45,
+    location: 60,
+    sms: 30,
+    calls: 25,
+    camera: 55,
+    otherNetworks: 70,
+    '2fa_bypass': 80,
+    acceleration: 45,
+  };
+
+  try {
+    const body = (await request.json().catch(() => ({}))) as any;
+    const service = String(body?.service || '');
+    const currentCredits = typeof body?.currentCredits === 'number' ? body.currentCredits : undefined;
+    const cost = SERVICE_COSTS[service] ?? 45;
+
+    if (typeof currentCredits === 'number' && currentCredits < cost) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'INSUFFICIENT_CREDITS',
+          cost,
+          credits: currentCredits,
+        }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
+    const newBalance = typeof currentCredits === 'number' ? currentCredits - cost : undefined;
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        cost,
+        credits: newBalance,
+      }),
+      { status: 200, headers: jsonHeaders }
+    );
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'SPEND_FAILED',
+        message: err.message || 'Erro ao debitar créditos.',
+      }),
+      { status: 500, headers: jsonHeaders }
+    );
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -336,6 +460,16 @@ export default {
     // 2. API route: Instagram Profile Lookup
     if (url.pathname === '/api/instagram/profile' || url.pathname.startsWith('/api/instagram/profile')) {
       return handleInstagramProfile(request, env);
+    }
+
+    // 3. API route: Accelerate Analysis (debits 45 credits in production Cloudflare Worker)
+    if (url.pathname === '/api/analysis/accelerate' || url.pathname.startsWith('/api/analysis/accelerate')) {
+      return handleAccelerate(request);
+    }
+
+    // 4. API route: User Spend Credits
+    if (url.pathname === '/api/user/spend' || url.pathname.startsWith('/api/user/spend')) {
+      return handleSpendCredits(request);
     }
 
     // 3. Fallback for unmatched /api/* routes: MUST return JSON error, never index.html!

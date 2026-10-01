@@ -406,7 +406,7 @@ async function startServer() {
     });
   });
 
-  // POST /api/analysis/accelerate - Accelerate analysis for 30 credits
+  // POST /api/analysis/accelerate - Accelerate analysis for 45 credits
   app.post('/api/analysis/accelerate', (req, res) => {
     const userId = resolveUserId(req);
     const { service = 'instagram' } = req.body as { service?: string };

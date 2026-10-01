@@ -114,7 +114,7 @@ export function startAnalysis(
 }
 
 /**
- * Accelerates an active analysis stage for 30 credits.
+ * Accelerates an active analysis stage for 45 credits.
  * Concludes current active stage and moves to next stage.
  */
 export function accelerateAnalysis(
@@ -145,8 +145,8 @@ export function accelerateAnalysis(
     };
   }
 
-  // Atomically debit 30 credits from user
-  const spendResult = spendCreditsAmount(userId, 30, 'instagram_acceleration');
+  // Atomically debit 45 credits from user
+  const spendResult = spendCreditsAmount(userId, 45, 'instagram_acceleration');
   if (!spendResult.success) {
     return {
       success: false,

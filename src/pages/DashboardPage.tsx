@@ -14,6 +14,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getDashboardUser, fetchCurrentUserApi } from '../services/espiaSession';
 import { MatrixBackground } from '../components/MatrixBackground';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { ServiceCard } from '../components/dashboard/ServiceCard';
@@ -22,7 +23,37 @@ import { LockedFeatureModal } from '../components/dashboard/LockedFeatureModal';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user: authUser, profile } = useAuth();
+  const { user: authUser, profile, refreshProfile } = useAuth();
+
+  const [cachedBalance, setCachedBalance] = useState<number>(() => {
+    try {
+      const u = getDashboardUser();
+      return typeof u.credits === 'number' ? u.credits : 200;
+    } catch {
+      return 200;
+    }
+  });
+
+  useEffect(() => {
+    refreshProfile();
+    fetchCurrentUserApi().then((u) => {
+      if (u && typeof u.credits === 'number') {
+        setCachedBalance(u.credits);
+      }
+    });
+
+    const handleCreditsEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ credits: number }>;
+      if (typeof customEvent.detail?.credits === 'number') {
+        setCachedBalance(customEvent.detail.credits);
+      }
+    };
+
+    window.addEventListener('espia_credits_updated', handleCreditsEvent);
+    return () => {
+      window.removeEventListener('espia_credits_updated', handleCreditsEvent);
+    };
+  }, []);
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -50,7 +81,7 @@ export const DashboardPage: React.FC = () => {
   };
 
   const userDisplayName = profile?.display_name || authUser?.email?.split('@')[0] || 'Investigador';
-  const credits = profile?.credits ?? 200;
+  const credits = typeof profile?.credits === 'number' ? profile.credits : cachedBalance;
   const xp = profile?.xp ?? 0;
   const level = profile?.level ?? 1;
   const xpPercent = Math.min(100, Math.max(0, (xp / 200) * 100));

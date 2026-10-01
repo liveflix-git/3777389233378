@@ -11,6 +11,19 @@
       "createdAt": "2026-09-28T12:19:08.680Z",
       "updatedAt": "2026-09-28T12:23:45.712Z",
       "currentStage": 5
+    },
+    "an_1790850719007_fk0p6": {
+      "id": "an_1790850719007_fk0p6",
+      "userId": "testuser45",
+      "username": "neymarjr",
+      "service": "instagram",
+      "status": "ACCELERATED",
+      "currentStage": 4,
+      "totalStages": 6,
+      "progress": 42,
+      "accelerated": true,
+      "createdAt": "2026-10-01T10:31:59.007Z",
+      "updatedAt": "2026-10-01T10:32:03.488Z"
     }
   }
 }

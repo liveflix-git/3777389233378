@@ -173,7 +173,7 @@ export const ServiceInvestigationPage: React.FC<ServiceInvestigationPageProps> =
 
   // Trigger Accelerate Flow
   const handleAccelerateClick = () => {
-    if (user.credits < 30) {
+    if (user.credits < 45) {
       setShowInsufficientCreditsModal(true);
     } else {
       setShowAccelerateModal(true);
@@ -591,7 +591,7 @@ export const ServiceInvestigationPage: React.FC<ServiceInvestigationPageProps> =
                     className="w-full py-4 rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider text-white bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer shadow-[0_0_20px_rgba(245,158,11,0.35)] flex items-center justify-center gap-2"
                   >
                     <Zap className="w-4 h-4 fill-white" />
-                    <span>Acelerar Análise (-30 Créditos)</span>
+                    <span>Acelerar Análise (-45 Créditos)</span>
                   </button>
                 )}
 
@@ -709,7 +709,7 @@ export const ServiceInvestigationPage: React.FC<ServiceInvestigationPageProps> =
         </div>
       )}
 
-      {/* MODAL 2: CONFIRMAÇÃO DE ACELERAÇÃO (-30 CRÉDITOS) */}
+      {/* MODAL 2: CONFIRMAÇÃO DE ACELERAÇÃO (-45 CRÉDITOS) */}
       {showAccelerateModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-[#0C1114] border border-amber-500/30 rounded-2xl p-6 space-y-5 text-center shadow-2xl animate-in zoom-in-95 duration-200 select-none">
@@ -723,7 +723,7 @@ export const ServiceInvestigationPage: React.FC<ServiceInvestigationPageProps> =
                 Avança instantaneamente para a próxima etapa avançada.
               </p>
               <div className="pt-2 text-xs font-extrabold text-amber-400">
-                Custo: -30 Créditos (Saldo atual: {user.credits})
+                Custo: -45 Créditos (Saldo atual: {user.credits})
               </div>
             </div>
 
@@ -740,7 +740,7 @@ export const ServiceInvestigationPage: React.FC<ServiceInvestigationPageProps> =
                 onClick={handleConfirmAccelerate}
                 className="py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-yellow-600 hover:brightness-110 cursor-pointer shadow-md"
               >
-                Confirmar (-30)
+                Confirmar (-45)
               </button>
             </div>
           </div>
@@ -758,7 +758,7 @@ export const ServiceInvestigationPage: React.FC<ServiceInvestigationPageProps> =
             <div className="space-y-1">
               <h3 className="text-lg font-extrabold text-white">Créditos Insuficientes</h3>
               <p className="text-xs text-[#9CA3AF]">
-                Você precisa de pelo menos <strong className="text-white">30 créditos</strong> para acelerar a investigação.
+                Você precisa de pelo menos <strong className="text-white">45 créditos</strong> para acelerar a investigação.
               </p>
               <div className="pt-1 text-xs text-rose-400 font-bold">
                 Saldo atual: {user.credits} créditos

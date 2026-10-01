@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
 import { Lock, Heart, MessageCircle, Send, Bookmark, MoreVertical } from 'lucide-react';
 import type { DataOrigin } from '../../services/instagramProfile';
-import type { LocationOrigin } from '../../services/visitorLocation';
 
 export interface RestrictedPreviewPostProps {
   maskedUsername: string;
-  maskedDisplayName?: string;
-  previewLocation?: string | null;
-  locationOrigin?: LocationOrigin;
   previewAge: string;
   previewImageUrl?: string;
   likedPreview?: boolean;
@@ -23,9 +19,6 @@ export interface RestrictedPreviewPostProps {
 
 export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
   maskedUsername,
-  maskedDisplayName,
-  previewLocation,
-  locationOrigin = 'regional-ui-preview',
   previewAge,
   previewImageUrl = 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&auto=format&fit=crop&q=80',
   likedPreview = false,
@@ -45,16 +38,13 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
     ? previewCounts.likes + (isLiked && !likedPreview ? 1 : !isLiked && likedPreview ? -1 : 0)
     : null;
 
-  const hasPreviewLocation = typeof previewLocation === 'string' && previewLocation.trim().length > 0;
-
   return (
     <article
       data-origin={origin}
       data-interaction-origin={interactionOrigin}
-      data-location-origin={locationOrigin}
       className={`w-full bg-[#080B0E] ${!isLast ? 'border-b border-[#20242A]' : ''}`}
     >
-      {/* 1. Header (Masked User + Blurred/Synthetic Avatar + Regional Preview Location) */}
+      {/* 1. Header (Masked User + Blurred/Synthetic Avatar) */}
       <div className="h-[54px] flex items-center justify-between px-[14px] py-2">
         <div className="flex items-center gap-3">
           {/* Protected/Blurred Synthetic Avatar */}
@@ -68,21 +58,10 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col">
+          <div className="flex flex-col justify-center">
             <span className="font-mono text-[13.5px] font-semibold text-[#F5F5F5] leading-tight tracking-tight">
               {maskedUsername}
             </span>
-            {hasPreviewLocation ? (
-              <span className="text-[11px] text-[#A8A8A8] leading-tight pt-0.5 truncate max-w-[200px]">
-                {previewLocation}
-              </span>
-            ) : (
-              maskedDisplayName && (
-                <span className="text-[11px] text-[#A8A8A8] leading-tight pt-0.5 truncate max-w-[180px]">
-                  {maskedDisplayName}
-                </span>
-              )
-            )}
           </div>
         </div>
 

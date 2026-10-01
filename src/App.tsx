@@ -40,6 +40,10 @@ function RouteNormalizer() {
         navigate('/dashboard', { replace: true });
         return;
       }
+      if (clean === 'login' || clean === 'entrar' || clean === 'auth') {
+        navigate('/login', { replace: true });
+        return;
+      }
       if (
         clean === 'back-redirect' ||
         clean === 'backredirect' ||
@@ -63,6 +67,10 @@ function RouteNormalizer() {
       const hash = location.hash.replace(/^#\/?/, '').toLowerCase().trim();
       if (hash === 'dashboard' || hash === 'painel' || hash === 'app') {
         navigate('/dashboard', { replace: true });
+        return;
+      }
+      if (hash === 'login' || hash === 'entrar' || hash === 'auth') {
+        navigate('/login', { replace: true });
         return;
       }
       if (
@@ -101,6 +109,10 @@ function FallbackRedirect() {
 
   if (path.includes('dashboard') || path.includes('painel')) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (path.includes('login') || path.includes('entrar') || path.includes('auth')) {
+    return <Navigate to="/login" replace />;
   }
 
   if (
@@ -150,7 +162,13 @@ export default function App() {
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/login/" element={<LoginPage />} />
+          <Route path="/login/*" element={<LoginPage />} />
           <Route path="/entrar" element={<LoginPage />} />
+          <Route path="/entrar/" element={<LoginPage />} />
+          <Route path="/entrar/*" element={<LoginPage />} />
+          <Route path="/auth" element={<LoginPage />} />
+          <Route path="/auth/*" element={<LoginPage />} />
 
           {/* Dashboard routes and aliases */}
           <Route path="/dashboard" element={<DashboardPage />} />

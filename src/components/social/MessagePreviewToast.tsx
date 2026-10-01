@@ -6,6 +6,7 @@ export interface MessagePreviewToastProps {
   previewText?: string;
   timestampLabel?: string;
   onClose?: () => void;
+  onClick?: () => void;
 }
 
 export const MessagePreviewToast: React.FC<MessagePreviewToastProps> = ({
@@ -14,6 +15,7 @@ export const MessagePreviewToast: React.FC<MessagePreviewToastProps> = ({
   previewText = '"teste adivinha o que vc\nesqueceu aqui? kkkkk"',
   timestampLabel = 'Agora',
   onClose,
+  onClick,
 }) => {
   // 'entering' | 'visible' | 'leaving' | 'hidden'
   const [animState, setAnimState] = useState<'entering' | 'visible' | 'leaving' | 'hidden'>('entering');
@@ -49,11 +51,15 @@ export const MessagePreviewToast: React.FC<MessagePreviewToastProps> = ({
 
   return (
     <div
+      onClick={() => {
+        onClick?.();
+        onClose?.();
+      }}
       style={{
         backgroundColor: 'rgba(34, 37, 45, 0.96)',
         borderColor: 'rgba(255, 255, 255, 0.11)',
       }}
-      className={`fixed top-[12px] left-[12px] right-[12px] z-50 max-w-[420px] mx-auto border rounded-[20px] p-3.5 shadow-[0_16px_40px_rgba(0,0,0,0.85)] backdrop-blur-xl select-none transition-all ${animationClass}`}
+      className={`fixed top-[12px] left-[12px] right-[12px] z-50 max-w-[420px] mx-auto border rounded-[20px] p-3.5 shadow-[0_16px_40px_rgba(0,0,0,0.85)] backdrop-blur-xl select-none transition-all cursor-pointer ${animationClass}`}
     >
       <div className="flex items-center gap-3">
         {/* Left Circular Blurred Avatar */}

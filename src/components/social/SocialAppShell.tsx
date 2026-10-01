@@ -7,26 +7,23 @@ import { DesktopSidebar } from './DesktopSidebar';
 import { DesktopRightSuggestions } from './DesktopRightSuggestions';
 import { PreviewBanner } from './PreviewBanner';
 import { BlockedPopup } from './BlockedPopup';
-import { CheckoutModal } from '../CheckoutModal';
-import { InteractiveScannerModal } from '../InteractiveScannerModal';
 
 interface SocialAppShellProps {
   profile: InstagramProfileData;
   children: React.ReactNode;
+  onBlockedClick?: (title?: string, desc?: string) => void;
   onBackToSearch?: () => void;
 }
 
 export const SocialAppShell: React.FC<SocialAppShellProps> = ({
   profile,
   children,
-  onBackToSearch,
+  onBlockedClick,
 }) => {
   const navigate = useNavigate();
   const [isBlockedPopupOpen, setIsBlockedPopupOpen] = useState(false);
   const [blockedPopupTitle, setBlockedPopupTitle] = useState('Recurso disponível no acesso VIP');
   const [blockedPopupDesc, setBlockedPopupDesc] = useState('Para liberar todas as funcionalidades e ter acesso permanente, torne-se um membro VIP.');
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
     if (isEspiaPreviewExpired()) {
@@ -35,6 +32,10 @@ export const SocialAppShell: React.FC<SocialAppShellProps> = ({
   }, [navigate]);
 
   const handleOpenBlocked = (title?: string, desc?: string) => {
+    if (onBlockedClick) {
+      onBlockedClick(title, desc);
+      return;
+    }
     if (title) setBlockedPopupTitle(title);
     if (desc) setBlockedPopupDesc(desc);
     setIsBlockedPopupOpen(true);
@@ -54,14 +55,14 @@ export const SocialAppShell: React.FC<SocialAppShellProps> = ({
         {/* 1. Left Desktop Sidebar (245px) */}
         <DesktopSidebar
           profile={profile}
-          onOpenSearch={() => setIsSearchOpen(true)}
+          onOpenSearch={() => handleOpenBlocked('Pesquisa restrita', 'Para pesquisar e rastrear outros perfis, torne-se um membro VIP.')}
           onBlockedClick={() => handleOpenBlocked()}
         />
 
         {/* 2. Center Feed Column (Dominant: min 650px, ideal 760px-800px on desktop) */}
         <main className="flex-1 w-full max-w-[780px] min-h-screen border-x border-[#24282E] flex flex-col bg-[#080B0E]">
           {/* Mobile Topbar */}
-          <MobileTopBar onBack={onBackToSearch} />
+          <MobileTopBar />
 
           {/* Feed Content */}
           <div className="flex-1 w-full pb-36">
@@ -72,7 +73,7 @@ export const SocialAppShell: React.FC<SocialAppShellProps> = ({
         {/* 3. Right Desktop Suggestions Sidebar (310px) */}
         <DesktopRightSuggestions
           profile={profile}
-          onOpenSearch={() => setIsSearchOpen(true)}
+          onOpenSearch={() => handleOpenBlocked('Mudar perfil', 'Troca de perfil disponível no plano VIP.')}
           onBlockedClick={() => handleOpenBlocked('Sugestões avançadas', 'Acesso ao mapeamento de perfis sugeridos disponível no plano VIP.')}
           onSelectSuggestion={() => handleOpenBlocked('Perfil relacionado', 'Acesso ao histórico deste perfil disponível no plano VIP.')}
         />
@@ -88,19 +89,6 @@ export const SocialAppShell: React.FC<SocialAppShellProps> = ({
         onVirarVip={handleOpenVip}
         title={blockedPopupTitle}
         description={blockedPopupDesc}
-      />
-
-      {/* VIP Checkout Modal */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        planName={`Acesso VIP · @${profile.username}`}
-      />
-
-      {/* Search Overlay for lookup without losing state */}
-      <InteractiveScannerModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
       />
 
     </div>

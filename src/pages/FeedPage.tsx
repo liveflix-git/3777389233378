@@ -5,7 +5,6 @@ import { SocialAppShell } from '../components/social/SocialAppShell';
 import { SocialStoriesRow } from '../components/social/SocialStoriesRow';
 import { SocialFeedArea } from '../components/social/SocialFeedArea';
 import { BlockedPopup } from '../components/social/BlockedPopup';
-import { CheckoutModal } from '../components/CheckoutModal';
 import { MessagePreviewToast } from '../components/social/MessagePreviewToast';
 
 export const FeedPage: React.FC = () => {
@@ -14,7 +13,6 @@ export const FeedPage: React.FC = () => {
 
   const [isBlockedPopupOpen, setIsBlockedPopupOpen] = useState(false);
   const [blockedTitle, setBlockedTitle] = useState('Recurso disponível no acesso VIP');
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [showNotificationToast, setShowNotificationToast] = useState(false);
 
   useEffect(() => {
@@ -29,9 +27,9 @@ export const FeedPage: React.FC = () => {
     }
   }, []);
 
-  // If no profile was looked up, redirect to search/landing
+  // If no profile was looked up, redirect to unlock
   if (!profile) {
-    navigate('/');
+    navigate('/unlock', { replace: true });
     return null;
   }
 
@@ -42,13 +40,13 @@ export const FeedPage: React.FC = () => {
 
   const handleOpenVip = () => {
     setIsBlockedPopupOpen(false);
-    setIsCheckoutOpen(true);
+    navigate('/unlock');
   };
 
   const targetFirstName = profile.fullName ? profile.fullName.split(' ')[0] : 'teste';
 
   return (
-    <SocialAppShell profile={profile} onBackToSearch={() => navigate('/')}>
+    <SocialAppShell profile={profile} onBlockedClick={handleOpenBlocked}>
       {/* Temporary Social Notification Toast matching reference */}
       {showNotificationToast && (
         <MessagePreviewToast
@@ -56,6 +54,7 @@ export const FeedPage: React.FC = () => {
           senderName="Fer*****"
           previewText={`"${targetFirstName} adivinha o que vc\nesqueceu aqui? kkkkk"`}
           timestampLabel="Agora"
+          onClick={() => handleOpenBlocked('Mensagem direta confidencial')}
           onClose={() => setShowNotificationToast(false)}
         />
       )}
@@ -80,13 +79,6 @@ export const FeedPage: React.FC = () => {
         onClose={() => setIsBlockedPopupOpen(false)}
         onVirarVip={handleOpenVip}
         title={blockedTitle}
-      />
-
-      {/* Checkout modal */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        planName={`Acesso VIP · @${profile.username}`}
       />
     </SocialAppShell>
   );

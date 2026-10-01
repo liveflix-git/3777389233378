@@ -46,9 +46,12 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
     >
       {/* 1. Header (Masked User + Blurred/Synthetic Avatar) */}
       <div className="h-[54px] flex items-center justify-between px-[14px] py-2">
-        <div className="flex items-center gap-3">
+        <div
+          onClick={onBlockedClick}
+          className="flex items-center gap-3 cursor-pointer group"
+        >
           {/* Protected/Blurred Synthetic Avatar */}
-          <div className="w-[34px] h-[34px] rounded-full p-[1.5px] bg-gradient-to-tr from-neutral-700 via-neutral-800 to-neutral-900 shrink-0 shadow-sm overflow-hidden">
+          <div className="w-[34px] h-[34px] rounded-full p-[1.5px] bg-gradient-to-tr from-neutral-700 via-neutral-800 to-neutral-900 shrink-0 shadow-sm overflow-hidden group-hover:scale-105 transition-transform">
             <div className="w-full h-full rounded-full bg-neutral-900 overflow-hidden flex items-center justify-center relative">
               <div
                 className="w-full h-full bg-gradient-to-br from-indigo-900 via-purple-900 to-neutral-900"
@@ -59,7 +62,7 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
           </div>
 
           <div className="flex flex-col justify-center">
-            <span className="font-mono text-[13.5px] font-semibold text-[#F5F5F5] leading-tight tracking-tight">
+            <span className="font-mono text-[13.5px] font-semibold text-[#F5F5F5] group-hover:text-white leading-tight tracking-tight">
               {maskedUsername}
             </span>
           </div>
@@ -110,20 +113,14 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
       {/* 3. Action Bar */}
       <div className="px-[14px] py-[12px] flex items-center text-white justify-between">
         <div className="flex items-center gap-[14px]">
-          {/* Heart: 24px */}
+          {/* Heart: 24px - Triggers VIP popup */}
           <button
             type="button"
-            onClick={() => setIsLiked(!isLiked)}
-            className="transition-colors active:scale-90 cursor-pointer p-0.5 -ml-0.5"
+            onClick={onBlockedClick}
+            className="transition-colors active:scale-90 cursor-pointer p-0.5 -ml-0.5 text-white hover:text-[#EC4899]"
             aria-label="Curtir"
           >
-            <Heart
-              className={`w-[24px] h-[24px] transition-transform ${
-                isLiked
-                  ? 'fill-[#FF3040] stroke-[#FF3040] text-[#FF3040] scale-105'
-                  : 'text-white stroke-[1.8] hover:text-[#EC4899]'
-              }`}
-            />
+            <Heart className="w-[24px] h-[24px] stroke-[1.8]" />
           </button>
 
           {/* MessageCircle: 23px */}
@@ -147,27 +144,23 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
           </button>
         </div>
 
-        {/* Bookmark: 23px */}
+        {/* Bookmark: 23px - Triggers VIP popup */}
         <button
           type="button"
-          onClick={() => setIsBookmarked(!isBookmarked)}
-          className="transition-colors active:scale-90 cursor-pointer p-0.5"
+          onClick={onBlockedClick}
+          className="transition-colors active:scale-90 cursor-pointer p-0.5 text-white hover:text-neutral-300"
           aria-label="Salvar"
         >
-          <Bookmark
-            className={`w-[23px] h-[23px] transition-transform ${
-              isBookmarked
-                ? 'fill-white stroke-white text-white'
-                : 'text-white stroke-[1.8] hover:text-neutral-300'
-            }`}
-          />
+          <Bookmark className="w-[23px] h-[23px] stroke-[1.8]" />
         </button>
       </div>
 
       {/* Likes count & caption preview line */}
       {likesCount !== null && (
         <div className="px-[14px] pb-3 text-xs text-[#F5F5F5] font-semibold leading-snug space-y-1">
-          <div>{likesCount.toLocaleString('pt-BR')} curtidas</div>
+          <div onClick={onBlockedClick} className="cursor-pointer hover:underline">
+            {likesCount.toLocaleString('pt-BR')} curtidas
+          </div>
           <div
             onClick={onBlockedClick}
             className="text-[#A8A8A8] font-normal cursor-pointer hover:underline truncate"

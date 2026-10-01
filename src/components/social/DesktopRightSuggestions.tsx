@@ -119,9 +119,12 @@ const SuggestionItem: React.FC<{
   onClick: () => void;
 }> = ({ item, onClick }) => {
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div
+      onClick={onClick}
+      className="flex items-center justify-between gap-2 p-1 -mx-1 rounded-lg hover:bg-white/[0.04] cursor-pointer transition-colors group"
+    >
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden flex items-center justify-center shrink-0 border border-[#24282E]/60">
+        <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden flex items-center justify-center shrink-0 border border-[#24282E]/60 group-hover:scale-105 transition-transform">
           <RobustAvatar
             src={item.profilePicture}
             alt={item.username}
@@ -149,7 +152,10 @@ const SuggestionItem: React.FC<{
 
       <button
         type="button"
-        onClick={onClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
         className="text-[11px] font-semibold text-[#0095F6] hover:text-[#60A5FA] cursor-pointer"
       >
         Seguindo

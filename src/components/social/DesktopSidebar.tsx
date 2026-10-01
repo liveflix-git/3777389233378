@@ -32,12 +32,12 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     { label: 'Página inicial', path: '/feed', icon: Home },
     { label: 'Reels', action: onBlockedClick, icon: Film },
     { label: 'Mensagens', path: '/direct', icon: MessageCircle, badge: '2' },
-    { label: 'Pesquisa', action: onOpenSearch, icon: Search },
+    { label: 'Pesquisa', action: onBlockedClick, icon: Search },
     { label: 'Explorar', action: onBlockedClick, icon: Compass },
     { label: 'Notificações', path: '/notifications', icon: Heart, dot: true },
     { label: 'Criar', action: onBlockedClick, icon: PlusSquare },
     { label: 'Painel', action: onBlockedClick, icon: LayoutDashboard },
-    { label: 'Perfil', path: '/profile', icon: User },
+    { label: 'Perfil', action: onBlockedClick, icon: User },
   ];
 
   return (

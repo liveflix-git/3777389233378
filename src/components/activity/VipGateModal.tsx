@@ -62,7 +62,7 @@ export const VipGateModal: React.FC<VipGateModalProps> = ({
             className="w-full h-12 rounded-xl bg-gradient-to-r from-[#6D3CEB] to-[#5B39D4] hover:brightness-110 active:scale-[0.98] transition-all font-bold text-white text-sm shadow-[0_0_20px_rgba(109,60,235,0.4)] flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Desbloquear VIP</span>
+            <span>Virar VIP</span>
           </button>
 
           <button

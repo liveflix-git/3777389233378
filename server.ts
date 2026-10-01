@@ -453,6 +453,15 @@ async function startServer() {
     return res.status(400).json({ success: false, error: 'INVALID_PROGRESS' });
   });
 
+  // 404 for unmatched /api routes
+  app.all('/api/*', (_req, res) => {
+    res.status(404).json({
+      status: 'ERROR',
+      error: 'NOT_FOUND',
+      message: 'Rota de API não encontrada.',
+    });
+  });
+
   // Vite development middlewares / static assets
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.resolve(process.cwd(), 'dist')));

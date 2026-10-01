@@ -69,7 +69,8 @@ export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = (
     setIsSearching(true);
 
     const requested = normalizeUsername(handle);
-    const startTime = Date.now();
+    const start = Date.now();
+    const minDelay = 3200; // Tempo visual mínimo entre 3 e 4 segundos (~3.2s)
 
     try {
       // 1. Fetch real profile from backend / Apify
@@ -81,11 +82,10 @@ export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = (
         throw new Error('PROFILE_MISMATCH');
       }
 
-      // 2. Ensure smooth animation duration of 3.8s (range of 3 to 5 seconds)
-      const elapsed = Date.now() - startTime;
-      const MIN_LOADING_TIME_MS = 3800;
-      if (elapsed < MIN_LOADING_TIME_MS) {
-        await new Promise((r) => setTimeout(r, MIN_LOADING_TIME_MS - elapsed));
+      // 2. Espera visual: max(tempo da API, ~3.2s) sem adicionar espera desnecessária se a API já demorou
+      const elapsed = Date.now() - start;
+      if (elapsed < minDelay) {
+        await new Promise((r) => setTimeout(r, minDelay - elapsed));
       }
 
       setFoundProfile(data);
@@ -96,6 +96,10 @@ export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = (
       setIsSearching(false);
       setStage('confirm');
     } catch (err: unknown) {
+      const elapsed = Date.now() - start;
+      if (elapsed < minDelay) {
+        await new Promise((r) => setTimeout(r, minDelay - elapsed));
+      }
       setIsSearching(false);
       const msg = err instanceof Error && err.message !== 'PROFILE_MISMATCH'
         ? err.message

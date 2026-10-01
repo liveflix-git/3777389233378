@@ -353,15 +353,38 @@ export default {
       );
     }
 
-    // 4. Serve Static Assets
+    // 4. Serve Static Assets with Internal SPA Fallback
     if (env.ASSETS) {
       const assetResponse = await env.ASSETS.fetch(request);
-      if (assetResponse.status !== 404) {
+
+      // If asset was found directly and is not an unintended HTTP redirect, return it
+      const isRedirect = assetResponse.status >= 300 && assetResponse.status < 400;
+      if (assetResponse.status !== 404 && !isRedirect) {
         return assetResponse;
       }
 
-      // 5. SPA Fallback to /index.html for React Router
-      return env.ASSETS.fetch(new Request(new URL('/index.html', request.url), request));
+      // 5. Internal SPA Fallback: Return /index.html with status 200 OK (never redirect URL)
+      const indexRequest = new Request(new URL('/index.html', request.url), request);
+      const indexResponse = await env.ASSETS.fetch(indexRequest);
+
+      // If indexResponse is already 200 OK, return it
+      if (indexResponse.status === 200) {
+        return indexResponse;
+      }
+
+      // Ensure response is returned with 200 OK and no Location redirect header
+      if (indexResponse.body) {
+        const headers = new Headers(indexResponse.headers);
+        headers.set('Content-Type', 'text/html; charset=utf-8');
+        headers.set('Cache-Control', 'no-cache');
+        headers.delete('Location');
+        return new Response(indexResponse.body, {
+          status: 200,
+          headers,
+        });
+      }
+
+      return assetResponse;
     }
 
     return new Response('Asset not found', { status: 404 });

@@ -171,12 +171,54 @@ export default function App() {
           <Route path="/auth/*" element={<LoginPage />} />
 
           {/* Dashboard routes and aliases */}
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/dashboard/" element={<DashboardPage />} />
-          <Route path="/painel" element={<DashboardPage />} />
-          <Route path="/painel/" element={<DashboardPage />} />
-          <Route path="/app" element={<DashboardPage />} />
-          <Route path="/app/" element={<DashboardPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/painel"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/painel/"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/dashboard/instagram"

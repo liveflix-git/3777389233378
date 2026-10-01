@@ -21,7 +21,6 @@ export const MatrixBackground: React.FC<MatrixBackgroundProps> = ({
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    // Intelligence telemetry tokens, hex, coordinates and system telemetry
     const techTokens = [
       '0x7F', 'NODE_04', 'LAT -23.55', 'LON -46.63', 'SIG_INT', 'SHA256',
       'SYNC', 'PACKET', 'TLS1.3', 'SEC_ENCR', 'ROUTE_OK', 'IP_MASK',
@@ -32,8 +31,8 @@ export const MatrixBackground: React.FC<MatrixBackgroundProps> = ({
     const chars = '0123456789ABCDEFabcdef:;._-/>#%&*';
     const charArray = chars.split('');
 
-    const fontSize = width < 640 ? 12 : 13;
-    let columns = Math.floor(width / (fontSize * 1.6));
+    const fontSize = width < 640 ? 12 : 14;
+    let columns = Math.floor(width / (fontSize * 1.8));
 
     interface ColumnData {
       y: number;
@@ -45,7 +44,7 @@ export const MatrixBackground: React.FC<MatrixBackgroundProps> = ({
 
     let columnsData: ColumnData[] = [];
     const initColumns = () => {
-      columns = Math.floor(width / (fontSize * 1.6));
+      columns = Math.floor(width / (fontSize * 1.8));
       columnsData = [];
       for (let i = 0; i < columns; i++) {
         columnsData[i] = {
@@ -68,7 +67,7 @@ export const MatrixBackground: React.FC<MatrixBackgroundProps> = ({
     window.addEventListener('resize', handleResize);
 
     let lastTime = 0;
-    const interval = 45 / speed;
+    const interval = Math.max(30, 45 / speed);
 
     const render = (time: number) => {
       animationFrameId = requestAnimationFrame(render);
@@ -76,15 +75,15 @@ export const MatrixBackground: React.FC<MatrixBackgroundProps> = ({
       if (time - lastTime < interval) return;
       lastTime = time;
 
-      // Deep fading clear in black (smooth trail)
-      ctx.fillStyle = 'rgba(5, 5, 7, 0.12)';
+      // Smooth background trail
+      ctx.fillStyle = 'rgba(5, 5, 7, 0.14)';
       ctx.fillRect(0, 0, width, height);
 
       ctx.font = `${fontSize}px "JetBrains Mono", monospace`;
 
       for (let i = 0; i < columnsData.length; i++) {
         const col = columnsData[i];
-        const x = i * (fontSize * 1.6);
+        const x = i * (fontSize * 1.8);
         const y = col.y * fontSize;
 
         col.tokenTimer++;
@@ -98,29 +97,15 @@ export const MatrixBackground: React.FC<MatrixBackgroundProps> = ({
 
         const rand = Math.random();
         if (rand > 0.96) {
-          // Bright electric cyan/blue highlight with glow
           ctx.fillStyle = '#38BDF8';
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = '#0284C7';
         } else if (rand > 0.88) {
-          // Vivid electric blue
           ctx.fillStyle = '#60A5FA';
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = '#2563EB';
         } else if (rand > 0.80) {
-          // Indigo & purple cyber tone
           ctx.fillStyle = '#818CF8';
-          ctx.shadowBlur = 4;
-          ctx.shadowColor = '#4F46E5';
         } else if (rand > 0.72) {
-          // Cyber violet highlight
           ctx.fillStyle = '#A78BFA';
-          ctx.shadowBlur = 3;
-          ctx.shadowColor = '#7C3AED';
         } else {
-          // Crisp readable technical blue-slate
           ctx.fillStyle = 'rgba(148, 163, 184, 0.42)';
-          ctx.shadowBlur = 0;
         }
 
         const displayChar = col.isTechString

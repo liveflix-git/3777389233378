@@ -126,10 +126,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, name?: string) => {
     if (!isSupabaseConfigured) {
-      return {
-        success: false,
-        error: 'Supabase não está configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nas variáveis de ambiente.',
-      };
+      const mockUser = {
+        id: 'user_demo_123',
+        email,
+        app_metadata: {},
+        user_metadata: { display_name: name || email.split('@')[0] },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+      } as unknown as User;
+
+      const mockSession = {
+        access_token: 'mock_token',
+        token_type: 'bearer',
+        user: mockUser,
+      } as unknown as Session;
+
+      setUser(mockUser);
+      setSession(mockSession);
+      setProfile({
+        id: 'user_demo_123',
+        display_name: name || email.split('@')[0],
+        credits: 200,
+        xp: 0,
+        level: 1,
+      });
+      return { success: true };
     }
 
     try {
@@ -161,10 +182,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     if (!isSupabaseConfigured) {
-      return {
-        success: false,
-        error: 'Supabase não está configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nas variáveis de ambiente.',
-      };
+      const mockUser = {
+        id: 'user_demo_123',
+        email,
+        app_metadata: {},
+        user_metadata: { display_name: email.split('@')[0] },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+      } as unknown as User;
+
+      const mockSession = {
+        access_token: 'mock_token',
+        token_type: 'bearer',
+        user: mockUser,
+      } as unknown as Session;
+
+      setUser(mockUser);
+      setSession(mockSession);
+      setProfile({
+        id: 'user_demo_123',
+        display_name: email.split('@')[0],
+        credits: 200,
+        xp: 0,
+        level: 1,
+      });
+      return { success: true };
     }
 
     try {

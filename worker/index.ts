@@ -1,5 +1,6 @@
-interface Env {
+export interface Env {
   APIFY_API_TOKEN?: string;
+  ASSETS: Fetcher;
 }
 
 export interface RelatedProfileItem {
@@ -137,8 +138,8 @@ export function normalizeApifyProfile(rawItem: any): InstagramProfileData {
   };
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const reqUrl = new URL(context.request.url);
+async function handleInstagramProfile(request: Request, env: Env): Promise<Response> {
+  const reqUrl = new URL(request.url);
   const rawUsername = reqUrl.searchParams.get('username') || '';
   const requested = normalizeUsername(rawUsername);
 
@@ -158,11 +159,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     );
   }
 
-  // Access APIFY_API_TOKEN from Cloudflare Pages Environment / Secrets
-  const token = context.env.APIFY_API_TOKEN?.trim();
+  const token = env.APIFY_API_TOKEN?.trim();
 
   if (!token) {
-    console.error('[CloudflarePagesFunction:instagram-profile] APIFY_API_TOKEN não configurada no ambiente.');
+    console.error('[InstagramProfileWorker] APIFY_API_TOKEN não configurada no ambiente Worker.');
     return new Response(
       JSON.stringify({
         status: 'UNAVAILABLE',
@@ -172,6 +172,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       { status: 500, headers: jsonHeaders }
     );
   }
+
+  console.log(`[InstagramProfile] Request for username: ${requested}`);
 
   const actorId = 'apify~instagram-profile-scraper';
   const endpoint = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}`;
@@ -201,7 +203,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => '');
-      console.error(`[CloudflarePagesFunction:instagram-profile] HTTP Error ${res.status}:`, errorText);
+      console.error(`[InstagramProfileWorker] HTTP Error ${res.status}:`, errorText);
       return new Response(
         JSON.stringify({
           status: 'UNAVAILABLE',
@@ -238,7 +240,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     const returned = normalizeUsername(item.username);
     if (requested !== returned) {
-      console.error(`[CloudflarePagesFunction:instagram-profile] PROFILE_MISMATCH - requested: ${requested}, returned: ${returned}`);
+      console.error(`[InstagramProfileWorker] PROFILE_MISMATCH - requested: ${requested}, returned: ${returned}`);
       return new Response(
         JSON.stringify({
           status: 'UNAVAILABLE',
@@ -265,7 +267,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       }
     );
   } catch (err: any) {
-    console.error('[CloudflarePagesFunction:instagram-profile] Exception during execution:', err);
+    console.error('[InstagramProfileWorker] Exception during execution:', err);
     return new Response(
       JSON.stringify({
         status: 'UNAVAILABLE',
@@ -275,4 +277,93 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       { status: 500, headers: jsonHeaders }
     );
   }
+}
+
+async function handleInstagramProfileImage(request: Request): Promise<Response> {
+  const reqUrl = new URL(request.url);
+  const remoteUrl = reqUrl.searchParams.get('url') || '';
+
+  if (!remoteUrl || !remoteUrl.startsWith('http')) {
+    return new Response('URL da imagem é obrigatória e deve iniciar com http/https.', {
+      status: 400,
+      headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+
+  try {
+    const res = await fetch(remoteUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Referer': 'https://www.instagram.com/',
+      },
+    });
+
+    if (!res.ok) {
+      return new Response('Não foi possível carregar a imagem do provedor remoto.', {
+        status: res.status,
+        headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    const headers = new Headers();
+    headers.set('Content-Type', res.headers.get('content-type') || 'image/jpeg');
+    headers.set('Cache-Control', 'public, max-age=86400');
+    headers.set('Access-Control-Allow-Origin', '*');
+
+    return new Response(res.body, {
+      status: 200,
+      headers,
+    });
+  } catch (err: any) {
+    console.error('[InstagramProfileImageWorker] Proxy error:', err);
+    return new Response('Erro no gateway ao buscar a imagem.', {
+      status: 502,
+      headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+}
+
+export default {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+
+    // 1. API route: Image Proxy
+    if (url.pathname === '/api/instagram/profile-image' || url.pathname.startsWith('/api/instagram/profile-image')) {
+      return handleInstagramProfileImage(request);
+    }
+
+    // 2. API route: Instagram Profile Lookup
+    if (url.pathname === '/api/instagram/profile' || url.pathname.startsWith('/api/instagram/profile')) {
+      return handleInstagramProfile(request, env);
+    }
+
+    // 3. Fallback for unmatched /api/* routes: MUST return JSON error, never index.html!
+    if (url.pathname.startsWith('/api/')) {
+      return new Response(
+        JSON.stringify({
+          status: 'ERROR',
+          error: 'NOT_FOUND',
+          message: 'Rota de API não encontrada.',
+        }),
+        {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // 4. Serve Static Assets
+    if (env.ASSETS) {
+      const assetResponse = await env.ASSETS.fetch(request);
+      if (assetResponse.status !== 404) {
+        return assetResponse;
+      }
+
+      // 5. SPA Fallback to /index.html for React Router
+      return env.ASSETS.fetch(new Request(new URL('/index.html', request.url), request));
+    }
+
+    return new Response('Asset not found', { status: 404 });
+  },
 };

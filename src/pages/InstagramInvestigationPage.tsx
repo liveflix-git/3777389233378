@@ -131,6 +131,11 @@ export const InstagramInvestigationPage: React.FC = () => {
     setIsSubmitting(true);
     setErrorMessage('');
 
+    try {
+      localStorage.setItem('espia_last_searched_handle', clean);
+      sessionStorage.setItem('espia_last_searched_handle', clean);
+    } catch {}
+
     const res = await startAnalysisApi(clean, 'instagram');
     setIsSubmitting(false);
 

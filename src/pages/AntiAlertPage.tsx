@@ -17,45 +17,133 @@ import { CheckoutModal } from '../components/CheckoutModal';
 import { getEspiaProfile, getActiveAnalysisApi } from '../services/espiaSession';
 import { MatrixBackground } from '../components/MatrixBackground';
 
+function resolveInitialProfile(): { username: string; displayName: string; avatar: string } {
+  const defaultAvatar =
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+
+  // 1. Try URL parameters
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const query =
+      params.get('username') ||
+      params.get('handle') ||
+      params.get('perfil') ||
+      params.get('alvo') ||
+      params.get('target');
+    if (query && query.trim()) {
+      const clean = query.trim().replace(/^@/, '');
+      if (clean && clean !== 'teste') {
+        return {
+          username: clean,
+          displayName: clean.split('.')[0] || clean,
+          avatar: defaultAvatar,
+        };
+      }
+    }
+  }
+
+  // 2. Try espia_last_searched_handle
+  try {
+    const lastHandle =
+      localStorage.getItem('espia_last_searched_handle') ||
+      sessionStorage.getItem('espia_last_searched_handle');
+    if (lastHandle && lastHandle.trim() && lastHandle !== 'teste') {
+      const clean = lastHandle.trim().replace(/^@/, '');
+      return {
+        username: clean,
+        displayName: clean.split('.')[0] || clean,
+        avatar: defaultAvatar,
+      };
+    }
+  } catch {}
+
+  // 3. Try stored Espia Profile
+  try {
+    const stored = getEspiaProfile();
+    if (stored && stored.username && stored.username !== 'teste') {
+      const clean = stored.username.replace(/^@/, '');
+      return {
+        username: clean,
+        displayName: stored.fullName || clean.split('.')[0] || clean,
+        avatar: stored.profilePicture || defaultAvatar,
+      };
+    }
+  } catch {}
+
+  // 4. Try any active analysis in localStorage
+  try {
+    const services = ['instagram', 'whatsapp', 'facebook', 'localizacao', 'sms', 'chamadas', 'camera', 'outras-redes'];
+    for (const s of services) {
+      const raw = localStorage.getItem(`espia_active_analysis_${s}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.username && parsed.username !== 'teste') {
+          const clean = parsed.username.replace(/^@/, '');
+          return {
+            username: clean,
+            displayName: clean.split('.')[0] || clean,
+            avatar: defaultAvatar,
+          };
+        }
+      }
+    }
+  } catch {}
+
+  // Safe fallback
+  return {
+    username: 'alvo',
+    displayName: 'Perfil Monitorado',
+    avatar: defaultAvatar,
+  };
+}
+
 export const AntiAlertPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState<string>('teste');
-  const [displayName, setDisplayName] = useState<string>('teste');
-  const [targetAvatar, setTargetAvatar] = useState<string>(
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-  );
+  const initial = resolveInitialProfile();
+  const [username, setUsername] = useState<string>(initial.username);
+  const [displayName, setDisplayName] = useState<string>(initial.displayName);
+  const [targetAvatar, setTargetAvatar] = useState<string>(initial.avatar);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  const handleGoToCheckout = () => {
+    window.location.href = 'https://checkout.perfectpay.com.br/pay/PPU38CQGK8M?';
+  };
 
   useEffect(() => {
     // 1. Try URL parameter
-    const queryUsername = searchParams.get('username') || searchParams.get('handle');
+    const queryUsername =
+      searchParams.get('username') ||
+      searchParams.get('handle') ||
+      searchParams.get('perfil') ||
+      searchParams.get('alvo');
     if (queryUsername) {
       const clean = queryUsername.trim().replace(/^@/, '');
-      if (clean) {
+      if (clean && clean !== 'teste') {
         setUsername(clean);
         setDisplayName(clean.split('.')[0] || clean);
         return;
       }
     }
 
-    // 2. Try active analysis from backend
+    // 2. Check stored Espia Profile
+    const storedProfile = getEspiaProfile();
+    if (storedProfile && storedProfile.username && storedProfile.username !== 'teste') {
+      const clean = storedProfile.username.replace(/^@/, '');
+      setUsername(clean);
+      setDisplayName(storedProfile.fullName || clean.split('.')[0] || clean);
+      if (storedProfile.profilePicture) {
+        setTargetAvatar(storedProfile.profilePicture);
+      }
+      return;
+    }
+
+    // 3. Try active analysis from backend
     getActiveAnalysisApi('instagram').then((analysis) => {
-      if (analysis && analysis.username) {
+      if (analysis && analysis.username && analysis.username !== 'teste') {
         setUsername(analysis.username);
         setDisplayName(analysis.username.split('.')[0] || analysis.username);
-        return;
-      }
-
-      // 3. Try stored Espia Profile
-      const storedProfile = getEspiaProfile();
-      if (storedProfile && storedProfile.username) {
-        setUsername(storedProfile.username.replace(/^@/, ''));
-        setDisplayName(storedProfile.fullName || storedProfile.username);
-        if (storedProfile.profilePicture) {
-          setTargetAvatar(storedProfile.profilePicture);
-        }
       }
     });
   }, [searchParams]);
@@ -248,7 +336,7 @@ export const AntiAlertPage: React.FC = () => {
           {/* CTA BUTTON */}
           <button
             type="button"
-            onClick={() => setIsCheckoutOpen(true)}
+            onClick={handleGoToCheckout}
             className="w-full py-4 px-6 rounded-2xl font-black text-xs sm:text-sm tracking-wider uppercase text-white bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#1D4ED8] hover:brightness-110 active:scale-[0.98] transition-all duration-200 shadow-[0_0_25px_rgba(37,99,235,0.4)] flex flex-col items-center justify-center gap-0.5 cursor-pointer"
           >
             <span className="text-sm sm:text-base">SIM, QUERO MONITORAR SEM SER DESCOBERTO!</span>
@@ -353,7 +441,7 @@ export const AntiAlertPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setIsCheckoutOpen(true)}
+            onClick={handleGoToCheckout}
             className="w-full py-4 px-6 rounded-2xl font-black text-xs sm:text-sm tracking-wider uppercase text-white bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#1D4ED8] hover:brightness-110 active:scale-[0.98] transition-all duration-200 shadow-[0_0_25px_rgba(37,99,235,0.4)] flex flex-col items-center justify-center gap-0.5 cursor-pointer"
           >
             <span className="text-sm sm:text-base">GARANTIR ANONIMATO TOTAL AGORA!</span>

@@ -42,7 +42,7 @@ export const SocialAppShell: React.FC<SocialAppShellProps> = ({
 
   const handleOpenVip = () => {
     setIsBlockedPopupOpen(false);
-    setIsCheckoutOpen(true);
+    navigate('/unlock');
   };
 
   return (

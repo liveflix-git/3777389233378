@@ -43,7 +43,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({
             R$
           </span>
           <span className="text-4xl sm:text-5xl font-black tracking-tight text-[#823BF6]">
-            47
+            29
           </span>
           <span className="text-2xl sm:text-3xl font-extrabold text-[#823BF6]">
             ,90

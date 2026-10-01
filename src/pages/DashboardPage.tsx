@@ -170,112 +170,77 @@ export const DashboardPage: React.FC = () => {
               <ServiceCard
                 icon={<MessageCircle className="w-5 h-5 text-emerald-400" />}
                 title="WhatsApp"
-                description="Recursos de análise e ferramentas relacionadas ao WhatsApp."
+                description="Extraia conversas, mídias, contatos frequentes e histórico de áudios."
                 creditCost="⚡ 40 créditos"
                 accentColor="text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
                 badgeStyle="bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                onClick={() =>
-                  openModal(
-                    'WhatsApp',
-                    'Recurso em desenvolvimento.'
-                  )
-                }
+                onClick={() => navigate('/dashboard/whatsapp')}
               />
 
               {/* 3. Facebook */}
               <ServiceCard
                 icon={<Share2 className="w-5 h-5 text-sky-400" />}
                 title="Facebook"
-                description="Ferramentas de análise de informações publicamente disponíveis."
+                description="Análise de perfil, amigos ocultos, Messenger e interações veladas."
                 creditCost="⚡ 45 créditos"
                 accentColor="text-sky-400 bg-sky-500/10 border-sky-500/30"
                 badgeStyle="bg-sky-500/15 text-sky-300 border-sky-500/30"
-                onClick={() =>
-                  openModal(
-                    'Facebook',
-                    'Recurso em desenvolvimento.'
-                  )
-                }
+                onClick={() => navigate('/dashboard/facebook')}
               />
 
               {/* 4. Localização */}
               <ServiceCard
                 icon={<MapPin className="w-5 h-5 text-amber-400" />}
                 title="Localização"
-                description="Ferramentas regionais e recursos de localização disponíveis."
+                description="Rastreamento em tempo real via triangulação de antenas e GPS."
                 creditCost="⚡ 60 créditos"
                 accentColor="text-amber-400 bg-amber-500/10 border-amber-500/30"
                 badgeStyle="bg-amber-500/15 text-amber-300 border-amber-500/30"
-                onClick={() =>
-                  openModal(
-                    'Localização',
-                    'Recurso em desenvolvimento.'
-                  )
-                }
+                onClick={() => navigate('/dashboard/localizacao')}
               />
 
               {/* 5. SMS */}
               <ServiceCard
                 icon={<Smartphone className="w-5 h-5 text-yellow-400" />}
                 title="SMS"
-                description="Módulo de análise e ferramentas relacionadas a mensagens."
+                description="Interceptação do histórico de mensagens e códigos de confirmação."
                 creditCost="⚡ 30 créditos"
                 accentColor="text-yellow-400 bg-yellow-500/10 border-yellow-500/30"
                 badgeStyle="bg-yellow-500/15 text-yellow-300 border-yellow-500/30"
-                onClick={() =>
-                  openModal(
-                    'SMS',
-                    'Recurso em desenvolvimento.'
-                  )
-                }
+                onClick={() => navigate('/dashboard/sms')}
               />
 
               {/* 6. Chamadas */}
               <ServiceCard
                 icon={<PhoneCall className="w-5 h-5 text-emerald-400" />}
                 title="Chamadas"
-                description="Módulo de análise de registros e ferramentas relacionadas."
+                description="Histórico de ligações efetuadas, recebidas e contatos não salvos."
                 creditCost="⚡ 25 créditos"
                 accentColor="text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
                 badgeStyle="bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                onClick={() =>
-                  openModal(
-                    'Chamadas',
-                    'Recurso em desenvolvimento.'
-                  )
-                }
+                onClick={() => navigate('/dashboard/chamadas')}
               />
 
               {/* 7. Câmera */}
               <ServiceCard
                 icon={<Camera className="w-5 h-5 text-fuchsia-400" />}
                 title="Câmera"
-                description="Recursos multimídia disponíveis na plataforma."
+                description="Acesso a galeria de fotos, mídias recebidas e vídeos do dispositivo."
                 creditCost="⚡ 55 créditos"
                 accentColor="text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30"
                 badgeStyle="bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30"
-                onClick={() =>
-                  openModal(
-                    'Câmera',
-                    'Recurso em desenvolvimento.'
-                  )
-                }
+                onClick={() => navigate('/dashboard/camera')}
               />
 
               {/* 8. Outras Redes */}
               <ServiceCard
                 icon={<Globe className="w-5 h-5 text-rose-400" />}
                 title="Outras Redes"
-                description="Ferramentas adicionais para outras plataformas e redes sociais."
+                description="Busca cruzada no TikTok, Telegram, Tinder e contas secundárias."
                 creditCost="⚡ 70 créditos"
                 accentColor="text-rose-400 bg-rose-500/10 border-rose-500/30"
                 badgeStyle="bg-rose-500/15 text-rose-300 border-rose-500/30"
-                onClick={() =>
-                  openModal(
-                    'Outras Redes',
-                    'Recurso em desenvolvimento.'
-                  )
-                }
+                onClick={() => navigate('/dashboard/outras-redes')}
               />
 
               {/* 9. Detetive Particular (~2 columns on desktop) */}
@@ -290,7 +255,7 @@ export const DashboardPage: React.FC = () => {
                 onClick={() =>
                   openModal(
                     'Detetive Particular',
-                    'Atendimento personalizado sob demanda com especialista. Entre em contato na central.'
+                    'Serviço de Detetive Particular ainda não está disponível para a sua região.'
                   )
                 }
               />

@@ -89,6 +89,10 @@ export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = (
       }
 
       setFoundProfile(data);
+      try {
+        localStorage.setItem('espia_last_searched_handle', data.username);
+        sessionStorage.setItem('espia_last_searched_handle', data.username);
+      } catch {}
       setIsSearching(false);
       setStage('confirm');
     } catch (err: unknown) {
@@ -106,6 +110,10 @@ export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = (
 
     saveEspiaProfile(foundProfile);
     initEspiaPreviewTimer(true);
+    try {
+      localStorage.setItem('espia_last_searched_handle', foundProfile.username);
+      sessionStorage.setItem('espia_last_searched_handle', foundProfile.username);
+    } catch {}
 
     onClose();
     navigate('/preparing');

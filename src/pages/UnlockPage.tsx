@@ -26,6 +26,10 @@ export const UnlockPage: React.FC = () => {
     ? profile.fullName.split(' ')[0]
     : profile?.username || 'o usuário';
 
+  const handleOpenCheckout = () => {
+    window.location.href = 'https://checkout.perfectpay.com.br/pay/PPU38CQGK8M?';
+  };
+
   return (
     <div className="relative min-h-screen bg-[#05090A] text-[#F5F5F5] selection:bg-[#8B5CF6]/30 overflow-x-hidden pb-36">
       {/* Subtle Matrix background effect */}
@@ -59,7 +63,7 @@ export const UnlockPage: React.FC = () => {
         {profile && (
           <LocationPreview
             profile={profile}
-            onOpenCheckout={() => setIsCheckoutOpen(true)}
+            onOpenCheckout={handleOpenCheckout}
           />
         )}
 
@@ -81,7 +85,7 @@ export const UnlockPage: React.FC = () => {
         <OfferCard
           username={username}
           targetName={targetFirstName}
-          onOpenCheckout={() => setIsCheckoutOpen(true)}
+          onOpenCheckout={handleOpenCheckout}
         />
 
         {/* 14. Social Proof / Testimonial Demo Carousel */}
@@ -104,7 +108,7 @@ export const UnlockPage: React.FC = () => {
       </div>
 
       {/* Sticky Bottom Purchase Bar */}
-      <StickyPurchaseBar onOpenCheckout={() => setIsCheckoutOpen(true)} />
+      <StickyPurchaseBar onOpenCheckout={handleOpenCheckout} />
 
       {/* Checkout Modal */}
       <CheckoutModal

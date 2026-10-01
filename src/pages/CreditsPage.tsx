@@ -30,6 +30,7 @@ interface CreditPackage {
   features: string[];
   highlight?: boolean;
   buttonGradient?: string;
+  checkoutUrl: string;
 }
 
 export const CreditsPage: React.FC = () => {
@@ -48,6 +49,7 @@ export const CreditsPage: React.FC = () => {
       id: 'pack_100',
       credits: '100 Créditos',
       price: 'R$ 39,90',
+      checkoutUrl: 'https://go.perfectpay.com.br/PPU38CQGLJA',
       features: [
         'Créditos nunca expiram',
         'Acesso a todos os serviços',
@@ -61,6 +63,7 @@ export const CreditsPage: React.FC = () => {
       oldPrice: 'R$ 209,30',
       bonus: '+ 100 Créditos Bônus',
       savings: 'Economize R$ 129,40',
+      checkoutUrl: 'https://go.perfectpay.com.br/PPU38CQGLJC',
       features: [
         'Créditos nunca expiram',
         'Acesso a todos os serviços',
@@ -77,6 +80,7 @@ export const CreditsPage: React.FC = () => {
       bonus: '+ 300 Créditos Bônus',
       savings: 'Economize R$ 408,30',
       highlight: true,
+      checkoutUrl: 'https://go.perfectpay.com.br/PPU38CQGLJD',
       features: [
         'Créditos nunca expiram',
         'Acesso a todos os serviços',
@@ -86,26 +90,12 @@ export const CreditsPage: React.FC = () => {
       buttonGradient: 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:brightness-110 text-white font-black',
     },
     {
-      id: 'pack_5000',
-      credits: '5.000 Créditos',
-      price: 'R$ 299,90',
-      oldPrice: 'R$ 1.794,00',
-      bonus: 'Economia Máxima',
-      savings: 'Economize R$ 1.494,10',
-      features: [
-        'Créditos nunca expiram',
-        'Acesso a todos os serviços',
-        'Melhor custo por crédito',
-        'Processamento Ultra Rápido',
-      ],
-      buttonGradient: 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white',
-    },
-    {
       id: 'pack_infinite',
       credits: 'Créditos Infinitos',
       isUnlimited: true,
       price: 'R$ 49,90',
       badge: 'ACESSO ILIMITADO',
+      checkoutUrl: 'https://go.perfectpay.com.br/PPU38CQGLJE',
       features: [
         'Uso ilimitado sem restrição',
         'Acesso a todos os serviços e módulos',
@@ -117,11 +107,19 @@ export const CreditsPage: React.FC = () => {
   ];
 
   const handleBuyClick = (pkg: CreditPackage) => {
-    setSelectedPackage(pkg);
+    if (pkg.checkoutUrl) {
+      window.location.href = pkg.checkoutUrl;
+    } else {
+      setSelectedPackage(pkg);
+    }
   };
 
   const handleSimulatePayment = () => {
-    setIsSuccessModalOpen(true);
+    if (selectedPackage?.checkoutUrl) {
+      window.location.href = selectedPackage.checkoutUrl;
+    } else {
+      setIsSuccessModalOpen(true);
+    }
   };
 
   return (
@@ -175,7 +173,7 @@ export const CreditsPage: React.FC = () => {
           </div>
 
           {/* GRID DE PACOTES */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
             {creditPackages.map((pkg) => {
               const isHighlight = pkg.highlight;
               return (

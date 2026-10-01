@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, Key, Eye, EyeOff, User, AlertCircle } from 'lucide-react';
 import { MatrixBackground } from '../components/MatrixBackground';
-import { loginApi, registerApi } from '../services/espiaSession';
+import { useAuth } from '../contexts/AuthContext';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
   // Form states
@@ -42,20 +43,20 @@ export const LoginPage: React.FC = () => {
     setError('');
 
     if (activeTab === 'login') {
-      const res = await loginApi(email.trim(), password.trim());
+      const res = await signIn(email.trim(), password.trim());
       setIsLoading(false);
       if (res.success) {
         navigate('/dashboard');
       } else {
-        setError(res.message || 'E-mail ou senha incorretos.');
+        setError(res.error || 'Credenciais inválidas. Verifique seu e-mail e senha.');
       }
     } else {
-      const res = await registerApi(name.trim(), email.trim(), password.trim());
+      const res = await signUp(email.trim(), password.trim(), name.trim());
       setIsLoading(false);
       if (res.success) {
         navigate('/dashboard');
       } else {
-        setError(res.message || 'Erro ao criar conta.');
+        setError(res.error || 'Erro ao criar conta no Supabase.');
       }
     }
   };
@@ -196,7 +197,7 @@ export const LoginPage: React.FC = () => {
         </form>
 
         <p className="text-[11px] text-[#6B7280] text-center pt-2 border-t border-[#20282D]">
-          🔒 Conexão criptografada e segura de ponta a ponta.
+          🔒 Conexão criptografada e autenticada com Supabase.
         </p>
       </div>
     </div>

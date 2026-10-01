@@ -49,7 +49,6 @@ export type InstagramProfileResult =
       reason: string;
     };
 
-// Normalization function as strictly specified by user
 export function normalizeUsername(input: string): string {
   if (!input) return '';
   return input
@@ -60,7 +59,6 @@ export function normalizeUsername(input: string): string {
     .toLowerCase();
 }
 
-// Backwards compatibility alias
 export const normalizeInstagramUsername = normalizeUsername;
 
 export async function fetchInstagramProfile(rawInput: string): Promise<InstagramProfileData> {
@@ -70,103 +68,50 @@ export async function fetchInstagramProfile(rawInput: string): Promise<Instagram
     throw new Error('Digite um nome de usuário válido.');
   }
 
+  const endpoint = `/api/instagram/profile?username=${encodeURIComponent(requested)}`;
+
   try {
-    const res = await fetch(`/api/instagram/profile?username=${encodeURIComponent(requested)}`);
+    const res = await fetch(endpoint);
     const contentType = res.headers.get('content-type') || '';
 
-    if (res.ok && contentType.includes('application/json')) {
-      const result = await res.json();
+    if (contentType.includes('application/json')) {
+      const result = (await res.json()) as any;
 
-      if (result.status === 'NOT_FOUND') {
+      if (res.status === 404 || result.status === 'NOT_FOUND') {
         throw new Error('Não foi possível localizar esse perfil. Confira o @ e tente novamente.');
       }
 
       if (result.status === 'UNAVAILABLE') {
         if (result.reason === 'APIFY_TOKEN_NOT_CONFIGURED') {
-          throw new Error('É necessário configurar o token do Apify (APIFY_API_TOKEN).');
+          throw new Error('É necessário configurar a variável APIFY_API_TOKEN na Cloudflare.');
         }
-        throw new Error(result.reason || 'Serviço de consulta indisponível no momento.');
+        throw new Error(result.message || result.reason || 'Serviço de consulta indisponível no momento.');
       }
 
-      const data: InstagramProfileData = result.data || result;
+      if (res.ok && result.status === 'SUCCESS' && result.data) {
+        const data: InstagramProfileData = result.data;
 
-      // MANDATORY VALIDATION: requestedUsername === returnedUsername
-      const returned = normalizeUsername(data.username);
-      if (requested !== returned) {
-        console.error(`[InstagramLookup] PROFILE_MISMATCH - requested: ${requested}, returned: ${returned}`);
-        throw new Error('PROFILE_MISMATCH');
+        // Strict validation: requestedUsername === returnedUsername
+        const returned = normalizeUsername(data.username);
+        if (requested !== returned) {
+          console.error(`[InstagramLookup] PROFILE_MISMATCH - requested: ${requested}, returned: ${returned}`);
+          throw new Error('PROFILE_MISMATCH');
+        }
+
+        return data;
       }
-
-      return data;
     }
-  } catch (err: unknown) {
-    if (err instanceof Error && (err.message.includes('Não foi possível') || err.message === 'PROFILE_MISMATCH')) {
+
+    throw new Error('Não foi possível carregar os dados deste perfil no momento.');
+  } catch (err: any) {
+    if (
+      err instanceof Error &&
+      (err.message.includes('Não foi possível') ||
+        err.message === 'PROFILE_MISMATCH' ||
+        err.message.includes('APIFY_API_TOKEN'))
+    ) {
       throw err;
     }
-    console.warn('[InstagramProfile] Server endpoint not available, generating static simulated profile for Netlify:', err);
+    throw new Error(err.message || 'Erro ao conectar com o serviço de busca.');
   }
-
-  // --- STATIC NETLIFY FALLBACK SIMULATION ---
-  const formattedName = requested
-    .replace(/[._]/g, ' ')
-    .split(' ')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-
-  const seed = requested.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const followersCount = 1200 + (seed * 37) % 45000;
-  const followingCount = 200 + (seed * 19) % 1800;
-  const postsCount = 12 + (seed * 7) % 320;
-
-  // Generate dynamic, unique avatar matching the requested username
-  const initials = requested.slice(0, 2).toUpperCase();
-  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=0F172A&color=3B82F6&size=512&font-size=0.4&bold=true`;
-
-  return {
-    username: requested,
-    fullName: formattedName,
-    biography: `✨ Perfil Oficial • @${requested}\n📍 Brasil\n🔒 Conta monitorada e mapeada pelo sistema.`,
-    profilePicture: avatarUrl,
-    followers: followersCount,
-    following: followingCount,
-    posts: postsCount,
-    isPrivate: seed % 2 === 0,
-    isVerified: seed % 5 === 0,
-    relatedProfiles: [
-      {
-        origin: 'provider',
-        username: `${requested}_contato`,
-        fullName: `Contato de ${formattedName}`,
-        profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(requested.slice(0, 1).toUpperCase())}&background=1E293B&color=60A5FA&size=256`,
-        isVerified: false,
-        isPrivate: false,
-      },
-      {
-        origin: 'provider',
-        username: `amigos_${requested}`,
-        fullName: 'Conexões Próximas',
-        profilePicture: `https://ui-avatars.com/api/?name=CP&background=1E293B&color=34D399&size=256`,
-        isVerified: false,
-        isPrivate: true,
-      },
-    ],
-    latestPosts: [
-      {
-        origin: 'provider',
-        id: 'post_1',
-        displayUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80',
-        likesCount: 1420,
-        commentsCount: 89,
-        ownerUsername: requested,
-      },
-      {
-        origin: 'provider',
-        id: 'post_2',
-        displayUrl: 'https://images.unsplash.com/photo-1492633423870-43d1cd2775eb?auto=format&fit=crop&w=600&q=80',
-        likesCount: 980,
-        commentsCount: 45,
-        ownerUsername: requested,
-      },
-    ],
-  };
 }

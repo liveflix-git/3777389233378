@@ -52,7 +52,7 @@ export async function loginApi(
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await res.json();
+    const data = (await res.json()) as any;
     if (res.ok && data.success && data.user) {
       setUserId(data.user.id);
       saveDashboardUser(data.user);
@@ -81,7 +81,7 @@ export async function registerApi(
       body: JSON.stringify({ name, email, password }),
     });
 
-    const data = await res.json();
+    const data = (await res.json()) as any;
     if (res.ok && data.success && data.user) {
       setUserId(data.user.id);
       saveDashboardUser(data.user);
@@ -110,7 +110,7 @@ export async function fetchCurrentUserApi(): Promise<DashboardUser> {
     });
 
     if (res.ok) {
-      const data = await res.json();
+      const data = (await res.json()) as any;
       const user: DashboardUser = {
         id: data.id || userId,
         displayName: data.displayName || 'Felipe',
@@ -153,7 +153,7 @@ export async function spendCreditsApi(
 
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
-      const data = await res.json();
+      const data = (await res.json()) as any;
       if (data.success) {
         saveDashboardUser({ credits: data.credits });
         return {
@@ -207,7 +207,7 @@ export async function getActiveAnalysisApi(service = 'instagram'): Promise<Analy
     });
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
-      const data = await res.json();
+      const data = (await res.json()) as any;
       return data.analysis || null;
     }
   } catch (err) {
@@ -238,7 +238,7 @@ export async function startAnalysisApi(
 
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
-      const data = await res.json();
+      const data = (await res.json()) as any;
       return data;
     }
   } catch (err) {
@@ -281,7 +281,7 @@ export async function accelerateAnalysisApi(
 
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
-      const data = await res.json();
+      const data = (await res.json()) as any;
       if (data.success && typeof data.credits === 'number') {
         saveDashboardUser({ credits: data.credits });
       }

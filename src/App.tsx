@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { MatrixBackground } from './components/MatrixBackground';
 import { EspiaHeroScreen } from './components/EspiaHeroScreen';
 import { InteractiveScannerModal } from './components/InteractiveScannerModal';
@@ -40,33 +42,178 @@ function LandingPage() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/entrar" element={<LoginPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/dashboard/instagram" element={<InstagramInvestigationPage />} />
-        <Route path="/creditos" element={<CreditsPage />} />
-        <Route path="/comprar-creditos" element={<CreditsPage />} />
-        <Route path="/dashboard/creditos" element={<CreditsPage />} />
-        <Route path="/feed" element={<FeedPage />} />
-        <Route path="/preparing" element={<PreparingPage />} />
-        <Route path="/analyzing" element={<PreparingPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/direct" element={<DirectPage />} />
-        <Route path="/inbox" element={<DirectPage />} />
-        <Route path="/chat/:chatId" element={<ChatPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/activity" element={<NotificationsPage />} />
-        <Route path="/unlock" element={<UnlockPage />} />
-        <Route path="/acesso" element={<UnlockPage />} />
-        <Route path="/alerta" element={<AntiAlertPage />} />
-        <Route path="/anti-alerta" element={<AntiAlertPage />} />
-        <Route path="/back-redirect" element={<AntiAlertPage />} />
-        <Route path="/alerta-anti-vigilancia" element={<AntiAlertPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/entrar" element={<LoginPage />} />
+
+          {/* Protected routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/instagram"
+            element={
+              <ProtectedRoute>
+                <InstagramInvestigationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/creditos"
+            element={
+              <ProtectedRoute>
+                <CreditsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/comprar-creditos"
+            element={
+              <ProtectedRoute>
+                <CreditsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/creditos"
+            element={
+              <ProtectedRoute>
+                <CreditsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feed"
+            element={
+              <ProtectedRoute>
+                <FeedPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/preparing"
+            element={
+              <ProtectedRoute>
+                <PreparingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analyzing"
+            element={
+              <ProtectedRoute>
+                <PreparingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/direct"
+            element={
+              <ProtectedRoute>
+                <DirectPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/inbox"
+            element={
+              <ProtectedRoute>
+                <DirectPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/chat/:chatId"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/activity"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/unlock"
+            element={
+              <ProtectedRoute>
+                <UnlockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/acesso"
+            element={
+              <ProtectedRoute>
+                <UnlockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alerta"
+            element={
+              <ProtectedRoute>
+                <AntiAlertPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/anti-alerta"
+            element={
+              <ProtectedRoute>
+                <AntiAlertPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/back-redirect"
+            element={
+              <ProtectedRoute>
+                <AntiAlertPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alerta-anti-vigilancia"
+            element={
+              <ProtectedRoute>
+                <AntiAlertPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

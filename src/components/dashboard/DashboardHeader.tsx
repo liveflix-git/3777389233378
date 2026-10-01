@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, Menu, X, LayoutDashboard, User, History, Zap, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { logoutDashboardUser } from '../../services/espiaSession';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface DashboardHeaderProps {
   onOpenCreditsModal: () => void;
@@ -13,11 +13,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onOpenInfoModal,
 }) => {
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    logoutDashboardUser();
-    navigate('/');
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
   };
 
   return (

@@ -13,11 +13,7 @@ import {
   Plus,
   ArrowUpRight,
 } from 'lucide-react';
-import {
-  getDashboardUser,
-  fetchCurrentUserApi,
-  type DashboardUser,
-} from '../services/espiaSession';
+import { useAuth } from '../contexts/AuthContext';
 import { MatrixBackground } from '../components/MatrixBackground';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { ServiceCard } from '../components/dashboard/ServiceCard';
@@ -26,14 +22,7 @@ import { LockedFeatureModal } from '../components/dashboard/LockedFeatureModal';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<DashboardUser>(getDashboardUser());
-
-  useEffect(() => {
-    // Fetch official server-side user record and credit balance on mount
-    fetchCurrentUserApi().then((data) => {
-      setUser(data);
-    });
-  }, []);
+  const { user: authUser, profile } = useAuth();
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -60,8 +49,11 @@ export const DashboardPage: React.FC = () => {
     setModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
-  const userDisplayName = user.displayName || user.username || 'Felipe';
-  const xpPercent = Math.min(100, Math.max(0, (user.xp / 200) * 100));
+  const userDisplayName = profile?.display_name || authUser?.email?.split('@')[0] || 'Investigador';
+  const credits = profile?.credits ?? 200;
+  const xp = profile?.xp ?? 0;
+  const level = profile?.level ?? 1;
+  const xpPercent = Math.min(100, Math.max(0, (xp / 200) * 100));
 
   return (
     <div className="relative min-h-screen bg-[#05090A] text-[#F5F5F5] selection:bg-[#8B5CF6]/30 overflow-x-hidden flex flex-col justify-between">
@@ -101,7 +93,7 @@ export const DashboardPage: React.FC = () => {
                 <div className="shrink-0 bg-white/12 backdrop-blur-md rounded-[14px] px-3.5 py-2 sm:px-4 sm:py-2.5 border border-white/15 text-right flex flex-col items-end">
                   <span className="text-xs sm:text-sm font-bold text-white flex items-center gap-1">
                     <ArrowUpRight className="w-3.5 h-3.5 text-purple-200" />
-                    <span>Nv.{user.level || 1}</span>
+                    <span>Nv.{level}</span>
                   </span>
                   <span className="text-[10px] text-white/60 uppercase font-mono tracking-wider">
                     Level
@@ -118,7 +110,7 @@ export const DashboardPage: React.FC = () => {
                       ⚡ Créditos
                     </span>
                     <span className="text-2xl sm:text-3xl font-extrabold text-white leading-none">
-                      {user.credits}
+                      {credits}
                     </span>
                   </div>
 
@@ -139,7 +131,7 @@ export const DashboardPage: React.FC = () => {
                       ✨ XP
                     </span>
                     <span className="text-base sm:text-xl font-extrabold text-white">
-                      {user.xp}/200
+                      {xp}/200
                     </span>
                   </div>
 

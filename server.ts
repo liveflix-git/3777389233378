@@ -79,7 +79,7 @@ async function startServer() {
       });
 
       if (geoRes.ok) {
-        const geoJson = await geoRes.json();
+        const geoJson = (await geoRes.json()) as any;
         if (geoJson.status === 'success') {
           return res.json({
             city: geoJson.city || null,

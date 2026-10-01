@@ -1,0 +1,16 @@
+{
+  "analyses": {
+    "an_1790597948680_kkxh1": {
+      "id": "an_1790597948680_kkxh1",
+      "userId": "user_1790578273392_2yp0n",
+      "username": "teste",
+      "service": "instagram",
+      "status": "ACCELERATED",
+      "progress": 67,
+      "accelerated": true,
+      "createdAt": "2026-09-28T12:19:08.680Z",
+      "updatedAt": "2026-09-28T12:23:45.712Z",
+      "currentStage": 5
+    }
+  }
+}

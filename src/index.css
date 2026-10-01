@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #050507;
+    --surface: #0A0D14;
+    --blue-primary: #2563EB;
+    --blue-bright: #3B82F6;
+    --indigo-primary: #4F46E5;
+    --purple-highlight: #7C3AED;
+    --text-primary: #F5F5F7;
+    --text-secondary: #94A3B8;
+    --system-online: #22C55E;
+  }
+
+  body {
+    background-color: #050507;
+    color: #F5F5F7;
+    font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.font-main {
+  font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.font-instagram {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.font-mono-tech {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Cyber Intelligence Subtle Glows */
+.glow-blue-subtle {
+  box-shadow: 0 0 35px rgba(37, 99, 235, 0.18);
+}
+
+.glow-[#3B82F6] {
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+}
+
+.text-glow-cyber {
+  text-shadow: 0 0 16px rgba(59, 130, 246, 0.35);
+}
+
+/* Horizontal card scanner animation */
+@keyframes scan-horizontal-sweep {
+  0% {
+    top: -5%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.6;
+  }
+  85% {
+    opacity: 0.6;
+  }
+  100% {
+    top: 105%;
+    opacity: 0;
+  }
+}
+
+.animate-card-scanner {
+  animation: scan-horizontal-sweep 6s ease-in-out infinite;
+}
+
+/* Shimmer animation for primary CTA button */
+@keyframes cta-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-shimmer {
+  animation: cta-shimmer 3.2s infinite;
+}
+
+/* Social Notification Toast Keyframes */
+@keyframes toast-slide-down {
+  0% {
+    transform: translateY(-110%) scale(0.96);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-slide-up {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120%) scale(0.96);
+    opacity: 0;
+  }
+}
+
+.animate-toast-slide-down {
+  animation: toast-slide-down 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toast-slide-up {
+  animation: toast-slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Espia Aí",
+  "description": "Inteligência e análise discreta de perfis do Instagram. Digite um @ e descubra sinais e atividades.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

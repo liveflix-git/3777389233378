@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, Key, Eye, EyeOff, User, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Key, Eye, EyeOff, User, AlertCircle } from 'lucide-react';
 import { MatrixBackground } from '../components/MatrixBackground';
 import { loginApi, registerApi } from '../services/espiaSession';
 
@@ -102,20 +102,6 @@ export const LoginPage: React.FC = () => {
           >
             Criar Conta
           </button>
-        </div>
-
-        {/* ADMIN CREDENTIALS TIP BOX */}
-        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-1">
-          <p className="font-extrabold flex items-center gap-1.5 text-amber-400">
-            <ShieldCheck className="w-4 h-4 shrink-0" />
-            <span>Conta Admin para Testes:</span>
-          </p>
-          <p className="font-mono text-[11px] text-amber-100">
-            E-mail: <strong className="text-white">admin@admin.com</strong> | Senha: <strong className="text-white">admin</strong>
-          </p>
-          <p className="text-[10px] text-amber-300/80 pt-0.5">
-            ⚡ Acessa com 99.999 créditos ativados para testes completos.
-          </p>
         </div>
 
         {/* FORM */}

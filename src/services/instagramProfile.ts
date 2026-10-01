@@ -107,16 +107,26 @@ export async function fetchInstagramProfile(rawInput: string): Promise<Instagram
   }
 
   // --- STATIC NETLIFY FALLBACK SIMULATION ---
+  const formattedName = requested
+    .replace(/[._]/g, ' ')
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
   const seed = requested.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const followersCount = 1200 + (seed * 37) % 45000;
   const followingCount = 200 + (seed * 19) % 1800;
   const postsCount = 12 + (seed * 7) % 320;
 
+  // Generate dynamic, unique avatar matching the requested username
+  const initials = requested.slice(0, 2).toUpperCase();
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=0F172A&color=3B82F6&size=512&font-size=0.4&bold=true`;
+
   return {
     username: requested,
-    fullName: requested.charAt(0).toUpperCase() + requested.slice(1),
-    biography: `✨ Perfil Oficial • ${requested}\n📍 Brasil\n🔒 Investigação Monitorada Ativa`,
-    profilePicture: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80`,
+    fullName: formattedName,
+    biography: `✨ Perfil Oficial • @${requested}\n📍 Brasil\n🔒 Conta monitorada e mapeada pelo sistema.`,
+    profilePicture: avatarUrl,
     followers: followersCount,
     following: followingCount,
     posts: postsCount,
@@ -125,17 +135,17 @@ export async function fetchInstagramProfile(rawInput: string): Promise<Instagram
     relatedProfiles: [
       {
         origin: 'provider',
-        username: `${requested}_fans`,
-        fullName: 'Fã Clube Oficial',
-        profilePicture: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
+        username: `${requested}_contato`,
+        fullName: `Contato de ${formattedName}`,
+        profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(requested.slice(0, 1).toUpperCase())}&background=1E293B&color=60A5FA&size=256`,
         isVerified: false,
         isPrivate: false,
       },
       {
         origin: 'provider',
-        username: `close_friends_${requested}`,
-        fullName: 'Amigos Próximos',
-        profilePicture: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80',
+        username: `amigos_${requested}`,
+        fullName: 'Conexões Próximas',
+        profilePicture: `https://ui-avatars.com/api/?name=CP&background=1E293B&color=34D399&size=256`,
         isVerified: false,
         isPrivate: true,
       },

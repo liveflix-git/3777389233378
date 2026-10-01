@@ -265,94 +265,17 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/feed"
-            element={
-              <ProtectedRoute>
-                <FeedPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/preparing"
-            element={
-              <ProtectedRoute>
-                <PreparingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analyzing"
-            element={
-              <ProtectedRoute>
-                <PreparingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/direct"
-            element={
-              <ProtectedRoute>
-                <DirectPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inbox"
-            element={
-              <ProtectedRoute>
-                <DirectPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chat/:chatId"
-            element={
-              <ProtectedRoute>
-                <ChatPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute>
-                <NotificationsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/activity"
-            element={
-              <ProtectedRoute>
-                <NotificationsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/unlock"
-            element={
-              <ProtectedRoute>
-                <UnlockPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/acesso"
-            element={
-              <ProtectedRoute>
-                <UnlockPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/feed" element={<FeedPage />} />
+          <Route path="/preparing" element={<PreparingPage />} />
+          <Route path="/analyzing" element={<PreparingPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/direct" element={<DirectPage />} />
+          <Route path="/inbox" element={<DirectPage />} />
+          <Route path="/chat/:chatId" element={<ChatPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/activity" element={<NotificationsPage />} />
+          <Route path="/unlock" element={<UnlockPage />} />
+          <Route path="/acesso" element={<UnlockPage />} />
 
           {/* Back redirect and Anti-Alert Routes & aliases */}
           <Route path="/back-redirect" element={<AntiAlertPage />} />

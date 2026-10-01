@@ -120,7 +120,7 @@ export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = (
     } catch {}
 
     onClose();
-    navigate('/preparing');
+    navigate('/feed');
   };
 
   // Handler when user clicks "Corrigir @"

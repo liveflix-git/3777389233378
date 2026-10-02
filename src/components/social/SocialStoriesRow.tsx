@@ -4,12 +4,12 @@ import type { RelatedProfileItem } from '../../services/instagramProfile';
 import { getProxiedImageUrl } from '../../utils/imageHelper';
 
 function maskUsername(username: string): string {
-  if (!username) return '******';
+  if (!username) return '***';
   const clean = username.trim().replace(/^@/, '');
-  if (clean.length <= 3) {
-    return clean + '******';
+  if (clean.length <= 2) {
+    return clean + '***';
   }
-  return clean.slice(0, 3) + '******';
+  return clean.slice(0, 3) + '***';
 }
 
 interface RealStoryCircleProps {
@@ -73,7 +73,7 @@ const RealStoryCircle: React.FC<RealStoryCircleProps> = ({
           )}
         </div>
       </div>
-      <span className="text-[11px] text-[#F5F5F5] font-mono truncate max-w-[72px] text-center tracking-tight leading-tight">
+      <span className="text-[11.5px] text-[#C4C7CF] font-sans font-normal truncate max-w-[74px] text-center tracking-tight leading-tight group-hover:text-white transition-colors">
         {maskedName}
       </span>
     </div>
@@ -122,18 +122,52 @@ export const SocialStoriesRow: React.FC<SocialStoriesRowProps> = ({
   const realCount = Math.min(realRelatedProfiles.length, TARGET_SLOTS);
   const placeholderCount = TARGET_SLOTS - realCount;
 
-  // Placeholder names for fallback slots
-  const fallbackNames = ['bri******', '_ar******', 'rap*****', 'car*****', 'fer*****', 'jp******'];
-  const placeholderNames = fallbackNames.slice(realCount, realCount + placeholderCount);
+  // We want Close Friends (Green) stories first, then normal stories (Pink/Purple)
+  // Partition: 3 Close Friends stories followed by 3 Regular stories
+  const CLOSE_FRIENDS_TARGET = 3;
 
-  if (import.meta.env.DEV) {
-    console.log('[SocialData]', {
-      mainUsername,
-      relatedProfilesCount: relatedProfiles?.length || 0,
-      realStoryProfilesCount: realCount,
-      placeholderStoryCount: placeholderCount,
+  interface StoryData {
+    id: string;
+    username: string;
+    profilePicture?: string | null;
+    isCloseFriends: boolean;
+    isPlaceholder: boolean;
+    bgGradientIdx?: number;
+  }
+
+  const allStories: StoryData[] = [];
+
+  // Add real profiles
+  for (let i = 0; i < realCount; i++) {
+    const p = realRelatedProfiles[i];
+    allStories.push({
+      id: `real-${p.username}-${i}`,
+      username: p.username,
+      profilePicture: p.profilePicture,
+      isCloseFriends: i < CLOSE_FRIENDS_TARGET,
+      isPlaceholder: false,
     });
   }
+
+  // Add placeholder slots
+  const fallbackNames = ['car***', 'fer***', 'jp***', 'luc***', 'gab***', 'isa***'];
+  for (let i = 0; i < placeholderCount; i++) {
+    const totalIndex = realCount + i;
+    allStories.push({
+      id: `placeholder-${i}`,
+      username: fallbackNames[i % fallbackNames.length],
+      profilePicture: null,
+      isCloseFriends: totalIndex < CLOSE_FRIENDS_TARGET,
+      isPlaceholder: true,
+      bgGradientIdx: i,
+    });
+  }
+
+  // Sort strictly: Green stories (isCloseFriends === true) FIRST, then Pink/Purple stories
+  const sortedStories = [...allStories].sort((a, b) => {
+    if (a.isCloseFriends === b.isCloseFriends) return 0;
+    return a.isCloseFriends ? -1 : 1;
+  });
 
   return (
     <div className="w-full overflow-x-auto scrollbar-none py-[14px] px-[14px] border-b border-[#24282E]/30 bg-[#080B0E] select-none">
@@ -166,55 +200,61 @@ export const SocialStoriesRow: React.FC<SocialStoriesRowProps> = ({
             </div>
           </div>
 
-          <span className="text-[11px] text-[#F5F5F5] font-normal truncate max-w-[72px] text-center tracking-tight leading-tight">
+          <span className="text-[11.5px] text-[#F5F5F5] font-sans font-medium truncate max-w-[74px] text-center tracking-tight leading-tight">
             Seu story
           </span>
         </div>
 
-        {/* 2. Real Related Profile Stories */}
-        {realRelatedProfiles.slice(0, realCount).map((profile, idx) => (
-          <RealStoryCircle
-            key={`real-${profile.username}-${idx}`}
-            username={profile.username}
-            profilePicture={profile.profilePicture}
-            isCloseFriends={idx % 2 === 0}
-            onClick={onStoryClick}
-          />
-        ))}
+        {/* 2. Sorted Stories (Green/Melhores Amigos FIRST, then Pink/Purple) */}
+        {sortedStories.map((story) => {
+          if (!story.isPlaceholder) {
+            return (
+              <RealStoryCircle
+                key={story.id}
+                username={story.username}
+                profilePicture={story.profilePicture || null}
+                isCloseFriends={story.isCloseFriends}
+                onClick={onStoryClick}
+              />
+            );
+          }
 
-        {/* 3. Fallback Placeholder Stories (Lock Icons) */}
-        {placeholderNames.map((maskedName, idx) => (
-          <div
-            key={`placeholder-${idx}`}
-            onClick={onStoryClick}
-            className="flex flex-col items-center gap-1.5 cursor-pointer group"
-          >
-            <div className={`relative w-[70px] h-[70px] rounded-full p-[2.5px] transition-transform duration-200 group-hover:scale-105 active:scale-95 ${
-              idx % 2 === 1
-                ? 'bg-[#22C55E] shadow-[0_0_10px_rgba(34,197,94,0.3)]'
-                : 'bg-gradient-to-tr from-[#F97316] via-[#EC4899] to-[#9333EA]'
-            }`}>
-              <div className="relative w-full h-full rounded-full bg-[#080B0E] p-[2px] overflow-hidden flex items-center justify-center">
-                <div
-                  className={`w-full h-full scale-125 ${
-                    idx % 3 === 0
-                      ? 'bg-gradient-to-br from-purple-950/80 via-indigo-950/90 to-neutral-950'
-                      : idx % 3 === 1
-                      ? 'bg-gradient-to-br from-rose-950/80 via-pink-950/90 to-neutral-950'
-                      : 'bg-gradient-to-br from-slate-900/90 via-blue-950/80 to-neutral-950'
-                  }`}
-                  style={{ filter: 'blur(10px) brightness(0.4)' }}
-                />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <Lock className="w-4 h-4 text-white drop-shadow" />
+          const maskedName = maskUsername(story.username);
+          const bgIdx = story.bgGradientIdx ?? 0;
+
+          return (
+            <div
+              key={story.id}
+              onClick={onStoryClick}
+              className="flex flex-col items-center gap-1.5 cursor-pointer group"
+            >
+              <div className={`relative w-[70px] h-[70px] rounded-full p-[2.5px] transition-transform duration-200 group-hover:scale-105 active:scale-95 ${
+                story.isCloseFriends
+                  ? 'bg-[#22C55E] shadow-[0_0_10px_rgba(34,197,94,0.3)]'
+                  : 'bg-gradient-to-tr from-[#F97316] via-[#EC4899] to-[#9333EA]'
+              }`}>
+                <div className="relative w-full h-full rounded-full bg-[#080B0E] p-[2px] overflow-hidden flex items-center justify-center">
+                  <div
+                    className={`w-full h-full scale-125 ${
+                      bgIdx % 3 === 0
+                        ? 'bg-gradient-to-br from-purple-950/80 via-indigo-950/90 to-neutral-950'
+                        : bgIdx % 3 === 1
+                        ? 'bg-gradient-to-br from-rose-950/80 via-pink-950/90 to-neutral-950'
+                        : 'bg-gradient-to-br from-slate-900/90 via-blue-950/80 to-neutral-950'
+                    }`}
+                    style={{ filter: 'blur(10px) brightness(0.4)' }}
+                  />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <Lock className="w-4 h-4 text-white drop-shadow" />
+                  </div>
                 </div>
               </div>
+              <span className="text-[11.5px] text-[#C4C7CF] font-sans font-normal truncate max-w-[74px] text-center tracking-tight leading-tight group-hover:text-white transition-colors">
+                {maskedName}
+              </span>
             </div>
-            <span className="text-[11px] text-[#A8A8A8] font-mono truncate max-w-[72px] text-center tracking-tight leading-tight">
-              {maskedName}
-            </span>
-          </div>
-        ))}
+          );
+        })}
 
       </div>
     </div>

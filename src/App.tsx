@@ -1,23 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { MatrixBackground } from './components/MatrixBackground';
 import { EspiaHeroScreen } from './components/EspiaHeroScreen';
-import { InteractiveScannerModal } from './components/InteractiveScannerModal';
-import { FeedPage } from './pages/FeedPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { DirectPage } from './pages/DirectPage';
-import { ChatPage } from './pages/ChatPage';
-import { NotificationsPage } from './pages/NotificationsPage';
-import { PreparingPage } from './pages/PreparingPage';
-import { UnlockPage } from './pages/UnlockPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { InstagramInvestigationPage } from './pages/InstagramInvestigationPage';
-import { ServiceInvestigationPage } from './pages/ServiceInvestigationPage';
-import { AntiAlertPage } from './pages/AntiAlertPage';
-import { CreditsPage } from './pages/CreditsPage';
-import { LoginPage } from './pages/LoginPage';
+
+// Lazy-loaded pages to reduce initial bundle and improve mobile first paint
+const FeedPage = lazy(() => import('./pages/FeedPage').then(m => ({ default: m.FeedPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const DirectPage = lazy(() => import('./pages/DirectPage').then(m => ({ default: m.DirectPage })));
+const ChatPage = lazy(() => import('./pages/ChatPage').then(m => ({ default: m.ChatPage })));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const PreparingPage = lazy(() => import('./pages/PreparingPage').then(m => ({ default: m.PreparingPage })));
+const UnlockPage = lazy(() => import('./pages/UnlockPage').then(m => ({ default: m.UnlockPage })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const InstagramInvestigationPage = lazy(() => import('./pages/InstagramInvestigationPage').then(m => ({ default: m.InstagramInvestigationPage })));
+const ServiceInvestigationPage = lazy(() => import('./pages/ServiceInvestigationPage').then(m => ({ default: m.ServiceInvestigationPage })));
+const AntiAlertPage = lazy(() => import('./pages/AntiAlertPage').then(m => ({ default: m.AntiAlertPage })));
+const CreditsPage = lazy(() => import('./pages/CreditsPage').then(m => ({ default: m.CreditsPage })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+
+// Lazy-loaded scanner modal - only loaded when user initiates search
+const InteractiveScannerModal = lazy(() =>
+  import('./components/InteractiveScannerModal').then(m => ({ default: m.InteractiveScannerModal }))
+);
+
+const PageLoadingFallback: React.FC = () => (
+  <div className="min-h-screen bg-[#050507] flex items-center justify-center select-none" aria-busy="true">
+    <div className="w-9 h-9 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+  </div>
+);
 
 function RouteNormalizer() {
   const location = useLocation();
@@ -150,10 +162,14 @@ function LandingPage() {
       </main>
 
       {/* 3. Interactive lookup & transition modal */}
-      <InteractiveScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-      />
+      {isScannerOpen && (
+        <Suspense fallback={null}>
+          <InteractiveScannerModal
+            isOpen={isScannerOpen}
+            onClose={() => setIsScannerOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -163,7 +179,8 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <RouteNormalizer />
-        <Routes>
+        <Suspense fallback={<PageLoadingFallback />}>
+          <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -299,6 +316,7 @@ export default function App() {
           {/* Smart Fallback */}
           <Route path="*" element={<FallbackRedirect />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

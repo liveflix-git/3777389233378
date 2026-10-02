@@ -58,11 +58,18 @@ export const EspiaHeroScreen: React.FC<EspiaHeroScreenProps> = ({ onStartAnalysi
 
         {/* LOGO ESPIA AÍ */}
         <div className="relative z-10 flex flex-col items-center justify-center mb-2">
-          <img
-            src="/espia-logo.png"
-            alt="Espia Aí App Logo"
-            className="w-28 sm:w-34 h-auto max-h-20 sm:max-h-24 object-contain mx-auto drop-shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-transform hover:scale-105"
-          />
+          <picture>
+            <source srcSet="/espia-logo.webp" type="image/webp" />
+            <img
+              src="/espia-logo.png"
+              alt="Espia Aí App Logo"
+              width={136}
+              height={96}
+              fetchPriority="high"
+              decoding="async"
+              className="w-28 sm:w-34 h-auto max-h-20 sm:max-h-24 object-contain mx-auto drop-shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-transform hover:scale-105"
+            />
+          </picture>
         </div>
 
         {/* 2. HEADLINE PRINCIPAL */}

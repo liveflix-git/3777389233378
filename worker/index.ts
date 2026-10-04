@@ -569,29 +569,31 @@ async function handleSpendCredits(request: Request): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    const path = url.pathname.toLowerCase();
 
-    // 1. API route: Image Proxy
-    if (url.pathname === '/api/instagram/profile-image' || url.pathname.startsWith('/api/instagram/profile-image')) {
-      return handleInstagramProfileImage(request);
-    }
+    // 1. ALL /api/* requests handled FIRST by Worker backend
+    if (path.startsWith('/api/')) {
+      // 1a. Image Proxy
+      if (path === '/api/instagram/profile-image' || path.startsWith('/api/instagram/profile-image')) {
+        return handleInstagramProfileImage(request);
+      }
 
-    // 2. API route: Instagram Profile Lookup
-    if (url.pathname === '/api/instagram/profile' || url.pathname.startsWith('/api/instagram/profile')) {
-      return handleInstagramProfile(request, env);
-    }
+      // 1b. Instagram Profile Lookup
+      if (path === '/api/instagram/profile' || path.startsWith('/api/instagram/profile')) {
+        return handleInstagramProfile(request, env);
+      }
 
-    // 3. API route: Accelerate Analysis
-    if (url.pathname === '/api/analysis/accelerate' || url.pathname.startsWith('/api/analysis/accelerate')) {
-      return handleAccelerate(request);
-    }
+      // 1c. Accelerate Analysis
+      if (path === '/api/analysis/accelerate' || path.startsWith('/api/analysis/accelerate')) {
+        return handleAccelerate(request);
+      }
 
-    // 4. API route: User Spend Credits
-    if (url.pathname === '/api/user/spend' || url.pathname.startsWith('/api/user/spend')) {
-      return handleSpendCredits(request);
-    }
+      // 1d. Spend Credits
+      if (path === '/api/user/spend' || path.startsWith('/api/user/spend')) {
+        return handleSpendCredits(request);
+      }
 
-    // 5. Fallback for unmatched /api/* routes: MUST return JSON error, never index.html!
-    if (url.pathname.startsWith('/api/')) {
+      // 1e. Fallback for unmatched /api/* routes: MUST return JSON error, never index.html!
       return new Response(
         JSON.stringify({
           status: 'ERROR',
@@ -600,12 +602,15 @@ export default {
         }),
         {
           status: 404,
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
         }
       );
     }
 
-    // 6. Serve Static Assets with Internal SPA Fallback
+    // 2. Serve Static Assets for non-API routes
     if (env.ASSETS) {
       const assetResponse = await env.ASSETS.fetch(request);
 
@@ -614,6 +619,7 @@ export default {
         return assetResponse;
       }
 
+      // 3. Fallback SPA: Return /index.html for frontend routes
       const indexRequest = new Request(new URL('/index.html', request.url), request);
       const indexResponse = await env.ASSETS.fetch(indexRequest);
 

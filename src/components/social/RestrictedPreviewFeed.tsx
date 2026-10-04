@@ -1,11 +1,15 @@
 import React from 'react';
+import type { InstagramProfileData } from '../../services/instagramProfile';
 import { RestrictedPreviewPost } from './RestrictedPreviewPost';
+import { maskUsername } from './SocialStoriesRow';
 
 export interface RestrictedPreviewFeedProps {
+  profile?: InstagramProfileData;
   onBlockedClick: () => void;
 }
 
 export const RestrictedPreviewFeed: React.FC<RestrictedPreviewFeedProps> = ({
+  profile,
   onBlockedClick,
 }) => {
   // Default configs for varied blocked preview posts (masked identities, protected synthetic avatars, blurred real images)
@@ -36,17 +40,43 @@ export const RestrictedPreviewFeed: React.FC<RestrictedPreviewFeedProps> = ({
     },
   ];
 
+  const relatedProfiles = (profile?.relatedProfiles || []).filter(
+    (p) => p && typeof p.username === 'string' && p.username.trim().length > 0
+  );
+
+  const publicMediaList: Array<{ imageUrl?: string; sourceUsername?: string }> =
+    Array.isArray((profile as any)?.publicPreviewMedia)
+      ? (profile as any).publicPreviewMedia
+      : [];
+
   return (
     <div className="w-full bg-[#080B0E] select-none">
       {feedConfigs.map((cfg, idx) => {
         const isLast = idx === feedConfigs.length - 1;
 
+        // Visual preview separation:
+        // authorVisual: real related profile from Apify + YepAPI
+        const previewAuthor = relatedProfiles.length > 0
+          ? relatedProfiles[idx % relatedProfiles.length]
+          : null;
+
+        const authorVisual = {
+          avatarUrl: previewAuthor?.profilePicture || null,
+          maskedUsername: previewAuthor ? maskUsername(previewAuthor.username) : cfg.maskedUsername,
+        };
+
+        // Media priority:
+        // 1. Real public media from public related profile if available
+        // 2. Demo fixture
+        const publicMedia = publicMediaList[idx]?.imageUrl || cfg.previewImageUrl;
+
         return (
           <RestrictedPreviewPost
             key={`restricted-feed-item-${idx}`}
-            maskedUsername={cfg.maskedUsername}
+            maskedUsername={authorVisual.maskedUsername}
+            authorAvatar={authorVisual.avatarUrl}
             previewAge={cfg.previewAge}
-            previewImageUrl={cfg.previewImageUrl}
+            previewImageUrl={publicMedia}
             likedPreview={cfg.likedPreview}
             savedPreview={cfg.savedPreview}
             previewCounts={cfg.previewCounts}

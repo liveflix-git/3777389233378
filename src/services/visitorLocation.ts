@@ -7,55 +7,41 @@ export interface ApproximateVisitorLocation {
 export type LocationOrigin = 'provider' | 'regional-ui-preview' | 'none';
 
 const STORAGE_KEY = 'espia_approx_region';
-let inFlightLocationPromise: Promise<ApproximateVisitorLocation> | null = null;
 
 /**
  * Fetches the approximate visitor location from backend once per session and caches in sessionStorage
  */
 export async function fetchApproximateVisitorLocation(): Promise<ApproximateVisitorLocation> {
-  // 1. Check sessionStorage cache first
   try {
+    // 1. Check sessionStorage cache first
     const cached = sessionStorage.getItem(STORAGE_KEY);
     if (cached) {
       return JSON.parse(cached) as ApproximateVisitorLocation;
     }
-  } catch {}
 
-  // 2. Prevent duplicate concurrent in-flight requests
-  if (inFlightLocationPromise) {
-    return inFlightLocationPromise;
-  }
+    // 2. Query backend approximate IP endpoint
+    const res = await fetch('/api/location/approximate', {
+      headers: { Accept: 'application/json' },
+    });
 
-  inFlightLocationPromise = (async () => {
-    try {
-      const res = await fetch('/api/location/approximate', {
-        headers: { Accept: 'application/json' },
-      });
-
-      if (!res.ok) {
-        throw new Error(`Server returned ${res.status}`);
-      }
-
-      const data: ApproximateVisitorLocation = await res.json();
-      const result: ApproximateVisitorLocation = {
-        city: data.city || null,
-        region: data.region || null,
-        country: data.country || null,
-      };
-
-      try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(result));
-      } catch {}
-      return result;
-    } catch (err) {
-      console.warn('[VisitorLocation] Could not retrieve approximate location:', err);
-      return { city: null, region: null, country: null };
+    if (!res.ok) {
+      throw new Error(`Server returned ${res.status}`);
     }
-  })().finally(() => {
-    inFlightLocationPromise = null;
-  });
 
-  return inFlightLocationPromise;
+    const data: ApproximateVisitorLocation = await res.json();
+    const result: ApproximateVisitorLocation = {
+      city: data.city || null,
+      region: data.region || null,
+      country: data.country || null,
+    };
+
+    // Cache in sessionStorage for current session
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+    return result;
+  } catch (err) {
+    console.warn('[VisitorLocation] Could not retrieve approximate location:', err);
+    return { city: null, region: null, country: null };
+  }
 }
 
 /**

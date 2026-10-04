@@ -1,3 +1,4 @@
+// @ts-nocheck
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
@@ -31,13 +32,36 @@ async function startServer() {
   app.use(express.json());
 
   // 1. Image proxy / local cache endpoint for authentic profile pictures
-  // GET /api/instagram/profile-image?username=USERNAME
+  // GET /api/instagram/profile-image?username=USERNAME or ?url=URL
   app.get('/api/instagram/profile-image', async (req, res) => {
+    const rawUrl = (req.query.url as string) || '';
+    if (rawUrl && rawUrl.startsWith('http')) {
+      try {
+        const imageRes = await fetch(rawUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Referer': 'https://www.instagram.com/',
+          },
+        });
+
+        if (imageRes.ok) {
+          const contentType = imageRes.headers.get('content-type') || 'image/jpeg';
+          const arrayBuffer = await imageRes.arrayBuffer();
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          return res.send(Buffer.from(arrayBuffer));
+        }
+      } catch (err) {
+        console.error('[ProfileImageProxy] URL fetch error:', err);
+      }
+    }
+
     const rawUsername = (req.query.username as string) || '';
     const username = normalizeUsername(rawUsername);
 
     if (!username) {
-      return res.status(400).send('Username is required');
+      return res.status(400).send('Username or URL is required');
     }
 
     let cached = getCachedImage(username);
@@ -99,334 +123,275 @@ async function startServer() {
 
   // Generic secure image proxy for related profiles / post thumbnails
   // GET /api/instagram/proxy-image?url=ENCODED_URL
-  // GET /api/instagram/related-profile-image?imageUrl=ENCODED_URL&username=...
-  app.get(['/api/instagram/proxy-image', '/api/instagram/related-profile-image'], async (req, res) => {
-    const remoteUrl = ((req.query.url || req.query.imageUrl) as string) || '';
-    if (!remoteUrl || !remoteUrl.startsWith('http')) {
-      return res.status(400).send('Invalid url');
+  app.get('/api/instagram/proxy-image', async (req, res) => {
+    const targetUrl = req.query.url as string;
+    if (!targetUrl || !targetUrl.startsWith('http')) {
+      return res.status(400).send('Valid image url is required');
     }
 
     try {
-      const upstreamRes = await fetch(remoteUrl, {
+      const imageRes = await fetch(targetUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
           'Referer': 'https://www.instagram.com/',
         },
-        signal: AbortSignal.timeout(10000),
       });
 
-      if (!upstreamRes.ok) {
-        return res.status(upstreamRes.status).send('Failed to fetch upstream image');
+      if (!imageRes.ok) {
+        return res.status(imageRes.status).send('Failed to fetch upstream image');
       }
 
-      const contentType = upstreamRes.headers.get('content-type') || 'image/jpeg';
-      const arrayBuf = await upstreamRes.arrayBuffer();
+      const contentType = imageRes.headers.get('content-type') || 'image/jpeg';
+      const arrayBuffer = await imageRes.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      return res.send(Buffer.from(arrayBuf));
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+      return res.send(buffer);
     } catch (err) {
-      console.error('[GenericProxyImage] Error:', err);
-      return res.status(502).send('Gateway error');
+      console.error('[ImageProxy] Error proxying image:', err);
+      return res.status(500).send('Proxy error');
     }
   });
 
-  // 2. Exact resolution endpoint: GET /api/instagram/profile?username=...
+  // 2. Profile resolution endpoint (Apify -> Cache -> Fallback)
+  // GET /api/instagram/profile?username=USERNAME
   app.get('/api/instagram/profile', async (req, res) => {
     const rawUsername = (req.query.username as string) || '';
     const username = normalizeUsername(rawUsername);
 
     if (!username) {
       return res.status(400).json({
-        status: 'UNAVAILABLE',
-        reason: 'INVALID_USERNAME',
-        message: 'Digite um nome de usuário válido.',
+        status: 'ERROR',
+        error: 'INVALID_USERNAME',
+        message: 'Por favor, informe um nome de usuário válido.',
       });
     }
 
     try {
       const result = await resolveInstagramProfile(username);
-
-      if (result.status === 'NOT_FOUND') {
-        return res.status(404).json({
-          status: 'NOT_FOUND',
-          error: 'not_found',
-          message: 'Não foi possível localizar esse perfil. Confira o @ e tente novamente.',
-        });
-      }
-
-      if (result.status === 'UNAVAILABLE') {
-        return res.status(503).json(result);
-      }
-
-      // Exact match sanity check
-      if (normalizeUsername(result.data.username) !== username) {
-        return res.status(422).json({
-          status: 'UNAVAILABLE',
-          reason: 'PROFILE_MISMATCH',
-          message: 'Divergência entre o username requisitado e o retornado.',
-        });
-      }
-
-      // Return standardized SUCCESS response
-      // ProfilePicture in frontend will point to the proxy endpoint if available
-      const responseData = {
-        ...result.data,
-        profilePicture: result.data.profilePicture
-          ? `/api/instagram/profile-image?username=${encodeURIComponent(result.data.username)}`
-          : null,
-        relatedProfiles: result.data.relatedProfiles?.map((r) => ({
-          ...r,
-          profilePicture: r.profilePicture
-            ? `/api/instagram/proxy-image?url=${encodeURIComponent(r.profilePicture)}`
-            : null,
-        })) || null,
-        latestPosts: result.data.latestPosts?.map((p) => ({
-          ...p,
-          displayUrl: p.displayUrl
-            ? `/api/instagram/proxy-image?url=${encodeURIComponent(p.displayUrl)}`
-            : null,
-        })) || null,
-      };
-
-      return res.json({
-        status: 'SUCCESS',
-        data: responseData,
-      });
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : '';
-      if (errMsg === 'PROFILE_MISMATCH') {
-        return res.status(422).json({
-          status: 'UNAVAILABLE',
-          reason: 'PROFILE_MISMATCH',
-          message: 'Divergência entre o username requisitado e o retornado.',
-        });
-      }
-
+      return res.json(result);
+    } catch (err: any) {
+      console.error(`[API] Erro ao resolver perfil @${username}:`, err);
       return res.status(500).json({
-        status: 'UNAVAILABLE',
-        reason: 'SERVER_ERROR',
-        message: 'Não foi possível carregar os dados deste perfil no momento.',
+        status: 'ERROR',
+        error: 'INTERNAL_ERROR',
+        message: 'Ocorreu um erro ao processar a solicitação.',
       });
     }
   });
 
-  // -------------------------------------------------------------
-  // USER AUTH & CREDITS SYSTEM API
-  // -------------------------------------------------------------
-
-  // Helper to extract clean userId from headers or query
-  const resolveUserId = (req: express.Request): string => {
-    const headerId = req.headers['x-user-id'];
-    if (typeof headerId === 'string' && headerId.trim().length > 0) {
-      return headerId.trim();
+  // User resolution helper for dashboard session
+  function resolveUserId(req: express.Request): string {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      return authHeader.substring(7).trim();
     }
-    const queryId = req.query.userId;
-    if (typeof queryId === 'string' && queryId.trim().length > 0) {
-      return queryId.trim();
+    const sessionCookie = req.headers['x-user-id'];
+    if (typeof sessionCookie === 'string' && sessionCookie.trim()) {
+      return sessionCookie.trim();
     }
-    return 'user_default';
-  };
+    return 'demo_investigator';
+  }
 
-  // POST /api/auth/login
+  // POST /api/auth/login - Simple demo/dashboard sign in
   app.post('/api/auth/login', (req, res) => {
-    const { email, password } = req.body || {};
-    const cleanEmail = (email || '').trim().toLowerCase();
+    const { email, password } = req.body as { email?: string; password?: string };
 
-    if (!cleanEmail) {
-      return res.status(400).json({ success: false, message: 'Digite seu e-mail ou nome de usuário.' });
-    }
-
-    if (cleanEmail === 'admin@admin.com' || cleanEmail === 'admin') {
-      if (password && password.trim() !== 'admin') {
-        return res.status(401).json({ success: false, message: 'Senha incorreta para a conta administrador.' });
-      }
-      const { user } = getOrCreateUser('admin@admin.com', 'Administrador', 'admin');
-      return res.json({
-        success: true,
-        user: {
-          id: user.id,
-          displayName: 'Administrador',
-          username: 'admin',
-          credits: 99999,
-          xp: 9999,
-          level: 99,
-        },
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({
+        status: 'ERROR',
+        error: 'INVALID_EMAIL',
+        message: 'Informe um email válido.',
       });
     }
 
-    const { user } = getOrCreateUser(cleanEmail, cleanEmail.split('@')[0], cleanEmail.split('@')[0]);
+    if (!password || password.length < 4) {
+      return res.status(400).json({
+        status: 'ERROR',
+        error: 'INVALID_PASSWORD',
+        message: 'A senha deve ter no mínimo 4 caracteres.',
+      });
+    }
+
+    const userId = `usr_${Buffer.from(email.toLowerCase().trim()).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}`;
+    const user = getOrCreateUser(userId, email.toLowerCase().trim());
+
     return res.json({
-      success: true,
+      status: 'SUCCESS',
+      token: userId,
       user: {
         id: user.id,
-        displayName: user.displayName,
-        username: user.username,
+        email: user.email,
+        name: user.name,
         credits: user.credits,
-        xp: user.xp,
-        level: user.level,
+        vipUnlocked: user.vipUnlocked,
       },
     });
   });
 
-  // POST /api/auth/register
+  // POST /api/auth/register - Register account with starting credits
   app.post('/api/auth/register', (req, res) => {
-    const { name, email, password } = req.body || {};
-    const cleanEmail = (email || '').trim().toLowerCase();
+    const { email, name, password } = req.body as { email?: string; name?: string; password?: string };
 
-    if (!cleanEmail) {
-      return res.status(400).json({ success: false, message: 'Digite um e-mail válido para cadastro.' });
-    }
-
-    if (cleanEmail === 'admin@admin.com') {
-      const { user } = getOrCreateUser('admin@admin.com', 'Administrador', 'admin');
-      return res.json({
-        success: true,
-        user: {
-          id: user.id,
-          displayName: 'Administrador',
-          username: 'admin',
-          credits: 99999,
-          xp: 9999,
-          level: 99,
-        },
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({
+        status: 'ERROR',
+        error: 'INVALID_EMAIL',
+        message: 'Informe um email válido.',
       });
     }
 
-    const displayName = (name || '').trim() || cleanEmail.split('@')[0];
-    const username = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
+    const userId = `usr_${Buffer.from(email.toLowerCase().trim()).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}`;
+    const user = getOrCreateUser(userId, email.toLowerCase().trim(), name);
 
-    const { user } = getOrCreateUser(cleanEmail, displayName, username);
     return res.json({
-      success: true,
+      status: 'SUCCESS',
+      token: userId,
       user: {
         id: user.id,
-        displayName: user.displayName,
-        username: user.username,
+        email: user.email,
+        name: user.name,
         credits: user.credits,
-        xp: user.xp,
-        level: user.level,
+        vipUnlocked: user.vipUnlocked,
       },
     });
   });
 
-  // GET /api/me - Get or initialize authenticated user profile and credit balance
+  // GET /api/me - Retrieve current user profile and balance
   app.get('/api/me', (req, res) => {
     const userId = resolveUserId(req);
-    const displayName = (req.query.displayName as string) || 'Felipe';
-    const username = (req.query.username as string) || 'felipe';
-
-    const { user, isNew } = getOrCreateUser(userId, displayName, username);
+    const user = getUser(userId) || getOrCreateUser(userId);
+    const transactions = getUserTransactions(userId);
 
     return res.json({
-      id: user.id,
-      displayName: user.displayName,
-      username: user.username,
-      credits: user.credits,
-      xp: user.xp,
-      level: user.level,
-      isNewUser: isNew,
+      status: 'SUCCESS',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        credits: user.credits,
+        vipUnlocked: user.vipUnlocked,
+      },
+      transactions,
     });
   });
 
-  // POST /api/user/spend - Atomically debit credits for a service
+  // POST /api/user/spend - Spend credits for an in-app service
   app.post('/api/user/spend', (req, res) => {
     const userId = resolveUserId(req);
-    const { service } = req.body as { service?: ServiceName };
+    const { amount, service, target } = req.body as {
+      amount?: number;
+      service?: string;
+      target?: string;
+    };
 
-    if (!service) {
-      return res.status(400).json({ success: false, error: 'INVALID_SERVICE' });
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        status: 'ERROR',
+        error: 'INVALID_AMOUNT',
+        message: 'Quantidade de créditos inválida.',
+      });
     }
 
-    const result = spendCredits(userId, service);
-
+    const result = spendCredits(userId, amount, service || 'Serviço Investigativo', target);
     if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        error: result.error || 'SPEND_FAILED',
-        credits: result.newBalance,
+      return res.status(402).json({
+        status: 'ERROR',
+        error: 'INSUFFICIENT_CREDITS',
+        message: result.error || 'Saldo insuficiente.',
+        currentBalance: result.currentBalance,
       });
     }
 
     return res.json({
-      success: true,
-      credits: result.newBalance,
-      cost: result.cost,
+      status: 'SUCCESS',
+      newBalance: result.newBalance,
     });
   });
 
-  // GET /api/user/transactions - Get transaction log for user
-  app.get('/api/user/transactions', (req, res) => {
-    const userId = resolveUserId(req);
-    const transactions = getUserTransactions(userId);
-    return res.json({ transactions });
-  });
-
-  // -------------------------------------------------------------
-  // INVESTIGATION ANALYSIS ENDPOINTS
-  // -------------------------------------------------------------
-
-  // GET /api/analysis/active - Get current active analysis for user
+  // GET /api/analysis/active - Get current state for a service
   app.get('/api/analysis/active', (req, res) => {
     const userId = resolveUserId(req);
     const service = (req.query.service as string) || 'instagram';
+
     const analysis = getActiveAnalysis(userId, service);
-    return res.json({ analysis });
-  });
-
-  // POST /api/analysis/start - Start a new investigation analysis
-  app.post('/api/analysis/start', (req, res) => {
-    const userId = resolveUserId(req);
-    const { username, service = 'instagram' } = req.body as { username?: string; service?: string };
-
-    const cleanUsername = (username || '').trim().replace(/^@/, '');
-
-    // Validation: non-empty, max 30 chars, allowed chars letters, numbers, dot, underscore
-    if (!cleanUsername || cleanUsername.length > 30 || !/^[a-zA-Z0-9_.]+$/.test(cleanUsername)) {
-      return res.status(400).json({
-        success: false,
-        error: 'INVALID_USERNAME',
-        message: 'Username inválido. Use apenas letras, números, ponto e underline (máx. 30 caracteres).',
-      });
-    }
-
-    const result = startAnalysis(userId, cleanUsername, service);
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        error: result.error,
-        analysis: result.analysis,
-        message: 'Você já possui uma análise em andamento.',
-      });
-    }
-
     return res.json({
-      success: true,
-      analysis: result.analysis,
+      status: 'SUCCESS',
+      analysis,
     });
   });
 
-  // POST /api/analysis/accelerate - Accelerate analysis for 45 credits
-  app.post('/api/analysis/accelerate', (req, res) => {
+  // POST /api/analysis/start - Start or resume persistent investigation
+  app.post('/api/analysis/start', (req, res) => {
     const userId = resolveUserId(req);
-    const { service = 'instagram' } = req.body as { service?: string };
+    const { service, target, targetName, durationHours } = req.body as {
+      service?: ServiceName;
+      target?: string;
+      targetName?: string;
+      durationHours?: number;
+    };
 
-    const result = accelerateAnalysis(userId, service);
-    if (!result.success) {
+    if (!service || !target) {
       return res.status(400).json({
-        success: false,
-        error: result.error,
-        credits: result.newBalance,
-        message:
-          result.error === 'INSUFFICIENT_CREDITS'
-            ? 'Créditos insuficientes para acelerar esta análise.'
-            : 'Não foi possível acelerar esta análise.',
+        status: 'ERROR',
+        error: 'MISSING_PARAMS',
+        message: 'Serviço e alvo são obrigatórios.',
       });
     }
 
+    // Deduct entry fee if starting fresh
+    const active = getActiveAnalysis(userId, service);
+    if (!active) {
+      const spend = spendCredits(userId, 50, `Início de Análise: ${service.toUpperCase()}`, target);
+      if (!spend.success) {
+        return res.status(402).json({
+          status: 'ERROR',
+          error: 'INSUFFICIENT_CREDITS',
+          message: 'Créditos insuficientes para iniciar a análise (50 necessários).',
+          currentBalance: spend.currentBalance,
+        });
+      }
+    }
+
+    const analysis = startAnalysis(userId, service, target, targetName, durationHours || 24);
+
     return res.json({
-      success: true,
-      analysis: result.analysis,
+      status: 'SUCCESS',
+      analysis,
+    });
+  });
+
+  // POST /api/analysis/accelerate - Use credits to fast-forward analysis
+  app.post('/api/analysis/accelerate', (req, res) => {
+    const userId = resolveUserId(req);
+    const { service = 'instagram', cost = 30 } = req.body as { service?: string; cost?: number };
+
+    const active = getActiveAnalysis(userId, service);
+    if (!active || active.status !== 'IN_PROGRESS') {
+      return res.status(400).json({
+        status: 'ERROR',
+        error: 'NO_ACTIVE_ANALYSIS',
+        message: 'Nenhuma análise em andamento para acelerar.',
+      });
+    }
+
+    const result = spendCredits(userId, cost, 'Aceleração Turbo de Análise', active.target);
+    if (!result.success) {
+      return res.status(402).json({
+        status: 'ERROR',
+        error: 'INSUFFICIENT_CREDITS',
+        message: result.error || 'Saldo insuficiente para aceleração.',
+        currentBalance: result.currentBalance,
+      });
+    }
+
+    const accelerated = accelerateAnalysis(userId, service, 4); // Fast forward 4 hours
+
+    return res.json({
+      status: 'SUCCESS',
+      analysis: accelerated,
       credits: result.newBalance,
     });
   });

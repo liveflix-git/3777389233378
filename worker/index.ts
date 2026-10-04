@@ -1,16 +1,21 @@
 export interface Env {
   APIFY_API_TOKEN?: string;
+  YEP_API_KEY?: string;
   ASSETS: Fetcher;
 }
 
-export interface RelatedProfileItem {
-  origin: 'provider';
+export interface RelatedInstagramProfile {
+  id?: string;
   username: string;
-  fullName: string | null;
-  profilePicture: string | null;
-  isVerified: boolean | null;
-  isPrivate: boolean | null;
+  fullName?: string;
+  isVerified?: boolean;
+  isPrivate?: boolean;
+  profilePicture?: string;
 }
+
+export type RelatedProfileItem = RelatedInstagramProfile & {
+  origin?: 'provider';
+};
 
 export interface LatestPostItem {
   origin: 'provider';
@@ -35,7 +40,7 @@ export interface InstagramProfileData {
   posts: number | null;
   isPrivate: boolean | null;
   isVerified: boolean | null;
-  relatedProfiles?: RelatedProfileItem[] | null;
+  relatedProfiles?: RelatedInstagramProfile[] | null;
   latestPosts?: LatestPostItem[] | null;
 }
 
@@ -53,33 +58,43 @@ export function normalizeApifyProfile(rawItem: any): InstagramProfileData {
   const rawFullName = rawItem.fullName?.trim();
   const rawBio = rawItem.biography !== undefined && rawItem.biography !== null ? rawItem.biography : null;
 
-  // 1. Related Profiles (max 5)
+  // 1. Related Profiles (preserve order, filter target and duplicates, up to 12 items)
   const rawRelated = rawItem.relatedProfiles || rawItem.related_profiles;
-  let normalizedRelated: RelatedProfileItem[] | null = null;
+  let normalizedRelated: RelatedInstagramProfile[] | null = null;
+  const targetUsername = normalizeUsername(rawItem.username);
 
   if (Array.isArray(rawRelated) && rawRelated.length > 0) {
-    const validRelated = rawRelated
-      .filter((r) => r && typeof r.username === 'string' && r.username.trim().length > 0)
-      .slice(0, 5)
-      .map((r) => {
-        const u = r.username!.trim().replace(/^@/, '');
-        const fn = (r.fullName || r.full_name || '')?.trim();
-        const rawPic = r.profilePicUrl || r.profile_pic_url || (typeof r.profilePicUrlHD === 'string' ? r.profilePicUrlHD : null);
-        const pic = typeof rawPic === 'string' && rawPic.trim().length > 0 ? rawPic.trim() : null;
-        const ver = typeof r.isVerified === 'boolean' ? r.isVerified : typeof r.is_verified === 'boolean' ? r.is_verified : null;
-        const priv = typeof r.isPrivate === 'boolean' ? r.isPrivate : typeof r.is_private === 'boolean' ? r.is_private : null;
+    const seenUsernames = new Set<string>();
+    const validRelated: RelatedInstagramProfile[] = [];
 
-        return {
-          origin: 'provider' as const,
-          username: u,
-          fullName: fn || null,
-          profilePicture: pic
-            ? `/api/instagram/profile-image?url=${encodeURIComponent(pic)}`
-            : null,
-          isVerified: ver,
-          isPrivate: priv,
-        };
+    for (const r of rawRelated) {
+      if (!r || typeof r.username !== 'string') continue;
+      const u = r.username.trim().replace(/^@/, '');
+      const uNorm = normalizeUsername(u);
+      if (!uNorm || uNorm === targetUsername || seenUsernames.has(uNorm)) {
+        continue;
+      }
+      seenUsernames.add(uNorm);
+
+      const fn = (r.fullName || r.full_name || '')?.trim();
+      const rawPic = r.profilePicUrl || r.profile_pic_url || (typeof r.profilePicUrlHD === 'string' ? r.profilePicUrlHD : null);
+      const pic = typeof rawPic === 'string' && rawPic.trim().length > 0 ? rawPic.trim() : null;
+      const ver = typeof r.isVerified === 'boolean' ? r.isVerified : typeof r.is_verified === 'boolean' ? r.is_verified : undefined;
+      const priv = typeof r.isPrivate === 'boolean' ? r.isPrivate : typeof r.is_private === 'boolean' ? r.is_private : undefined;
+
+      validRelated.push({
+        id: r.id ? String(r.id) : undefined,
+        username: u,
+        fullName: fn || undefined,
+        profilePicture: pic
+          ? `/api/instagram/profile-image?url=${encodeURIComponent(pic)}`
+          : undefined,
+        isVerified: ver,
+        isPrivate: priv,
       });
+
+      if (validRelated.length >= 12) break;
+    }
 
     if (validRelated.length > 0) {
       normalizedRelated = validRelated;
@@ -187,6 +202,7 @@ async function handleInstagramProfile(request: Request, env: Env): Promise<Respo
       },
       body: JSON.stringify({
         usernames: [requested],
+        includeRelatedProfiles: true,
       }),
     });
 
@@ -252,6 +268,78 @@ async function handleInstagramProfile(request: Request, env: Env): Promise<Respo
     }
 
     const normalizedData = normalizeApifyProfile(item);
+
+    // If Apify returned < 7 relatedProfiles and YEP_API_KEY is available, fetch similar profiles via YepAPI
+    if ((!normalizedData.relatedProfiles || normalizedData.relatedProfiles.length < 7) && env.YEP_API_KEY) {
+      try {
+        const yepRes = await fetch('https://api.yepapi.com/v1/instagram/user-similar', {
+          method: 'POST',
+          headers: {
+            'x-api-key': env.YEP_API_KEY.trim(),
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ username: requested }),
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (yepRes.ok) {
+          const yepJson = (await yepRes.json()) as any;
+          const rawList = Array.isArray(yepJson)
+            ? yepJson
+            : Array.isArray(yepJson.data)
+            ? yepJson.data
+            : Array.isArray(yepJson.users)
+            ? yepJson.users
+            : Array.isArray(yepJson.items)
+            ? yepJson.items
+            : [];
+
+          if (Array.isArray(rawList) && rawList.length > 0) {
+            const seen = new Set<string>([requested]);
+            const merged: RelatedInstagramProfile[] = [];
+
+            // Add existing Apify related profiles first
+            if (Array.isArray(normalizedData.relatedProfiles)) {
+              for (const p of normalizedData.relatedProfiles) {
+                const u = normalizeUsername(p.username);
+                if (u && !seen.has(u)) {
+                  seen.add(u);
+                  merged.push(p);
+                }
+              }
+            }
+
+            // Add YepAPI profiles
+            for (const r of rawList) {
+              if (merged.length >= 12) break;
+              if (!r || typeof r.username !== 'string') continue;
+              const u = normalizeUsername(r.username);
+              if (!u || seen.has(u)) continue;
+              seen.add(u);
+
+              const pic = r.profile_pic_url_hd || r.profile_pic_url || r.profilePicUrl || '';
+              merged.push({
+                id: r.id ? String(r.id) : undefined,
+                username: u,
+                fullName: (r.full_name || r.fullName || '')?.trim() || undefined,
+                profilePicture: pic && pic.startsWith('http')
+                  ? `/api/instagram/profile-image?url=${encodeURIComponent(pic)}`
+                  : undefined,
+                isPrivate: Boolean(r.is_private ?? r.isPrivate),
+                isVerified: Boolean(r.is_verified ?? r.isVerified),
+              });
+            }
+
+            if (merged.length > 0) {
+              normalizedData.relatedProfiles = merged;
+            }
+          }
+        }
+      } catch (yepErr) {
+        console.warn('[InstagramProfileWorker] YepAPI fallback error:', yepErr);
+      }
+    }
 
     return new Response(
       JSON.stringify({

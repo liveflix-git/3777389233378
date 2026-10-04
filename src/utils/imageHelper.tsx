@@ -5,12 +5,14 @@ import type { InstagramProfileData } from '../services/instagramProfile';
 /**
  * Returns proxy URL for arbitrary external Instagram CDN images
  */
-export function getProxiedImageUrl(url: string | null | undefined): string | null {
+export function getProxiedInstagramImage(url: string | null | undefined): string | null {
   if (!url) return null;
   if (url.startsWith('/api/instagram/')) return url;
   if (!url.startsWith('http')) return url;
-  return `/api/instagram/proxy-image?url=${encodeURIComponent(url)}`;
+  return `/api/instagram/profile-image?url=${encodeURIComponent(url)}`;
 }
+
+export const getProxiedImageUrl = getProxiedInstagramImage;
 
 /**
  * Returns preferred image URL for a profile (direct or proxy endpoint)
@@ -18,6 +20,12 @@ export function getProxiedImageUrl(url: string | null | undefined): string | nul
 export function getProfileImage(profile: InstagramProfileData | null | undefined): string | null {
   if (!profile) return null;
   if (profile.profilePicture) {
+    if (profile.profilePicture.startsWith('/api/instagram/')) {
+      return profile.profilePicture;
+    }
+    if (profile.profilePicture.startsWith('http')) {
+      return `/api/instagram/profile-image?url=${encodeURIComponent(profile.profilePicture)}`;
+    }
     return profile.profilePicture;
   }
   if (profile.username) {

@@ -7,6 +7,6 @@ export interface SocialFeedAreaProps {
   onBlockedClick: () => void;
 }
 
-export const SocialFeedArea: React.FC<SocialFeedAreaProps> = ({ onBlockedClick }) => {
-  return <RestrictedPreviewFeed onBlockedClick={onBlockedClick} />;
+export const SocialFeedArea: React.FC<SocialFeedAreaProps> = ({ profile, onBlockedClick }) => {
+  return <RestrictedPreviewFeed profile={profile} onBlockedClick={onBlockedClick} />;
 };

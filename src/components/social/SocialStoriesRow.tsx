@@ -1,36 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, Plus, User } from 'lucide-react';
-import type { RelatedProfileItem } from '../../services/instagramProfile';
-import { getProxiedImageUrl } from '../../utils/imageHelper';
+import type { RelatedInstagramProfile } from '../../services/instagramProfile';
+import { getProxiedInstagramImage } from '../../utils/imageHelper';
 
-function maskUsername(username: string): string {
-  if (!username) return '***';
+export const FREE_STORY_LIMIT = 3;
+
+export function maskUsername(username: string): string {
+  if (!username) return '******';
   const clean = username.trim().replace(/^@/, '');
-  if (clean.length <= 2) {
-    return clean + '***';
+  if (clean.length <= 3) {
+    return clean + '*****';
   }
-  return clean.slice(0, 3) + '***';
+  return clean.slice(0, 3) + '*****';
 }
+
+// Neutral placeholder profiles when real profiles < 7 or private (strictly neutral, NO stock/fake human photos)
+const DEFAULT_FALLBACK_PROFILES: RelatedInstagramProfile[] = [
+  { username: 'perfil_1', profilePicture: undefined },
+  { username: 'conta_2', profilePicture: undefined },
+  { username: 'user_3', profilePicture: undefined },
+  { username: 'perfil_4', profilePicture: undefined },
+  { username: 'conta_5', profilePicture: undefined },
+  { username: 'user_6', profilePicture: undefined },
+  { username: 'perfil_7', profilePicture: undefined },
+];
 
 interface RealStoryCircleProps {
   username: string;
-  profilePicture: string | null;
-  isCloseFriends?: boolean;
+  profilePicture?: string | null;
+  // Visual preview only — not real Instagram Close Friends data.
+  previewType: 'close-friends' | 'normal';
   onClick: () => void;
 }
 
 const RealStoryCircle: React.FC<RealStoryCircleProps> = ({
   username,
   profilePicture,
-  isCloseFriends,
+  previewType,
   onClick,
 }) => {
-  const [imgSrc, setImgSrc] = useState<string | null>(profilePicture);
+  const [imgSrc, setImgSrc] = useState<string | null>(profilePicture || null);
   const [proxyTried, setProxyTried] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  React.useEffect(() => {
-    setImgSrc(profilePicture);
+  useEffect(() => {
+    setImgSrc(profilePicture || null);
     setProxyTried(false);
     setImgError(false);
   }, [profilePicture]);
@@ -38,13 +52,20 @@ const RealStoryCircle: React.FC<RealStoryCircleProps> = ({
   const handleImgError = () => {
     if (!proxyTried && imgSrc && !imgSrc.startsWith('/api/instagram/')) {
       setProxyTried(true);
-      setImgSrc(getProxiedImageUrl(imgSrc));
+      setImgSrc(getProxiedInstagramImage(imgSrc));
     } else {
       setImgError(true);
     }
   };
 
+  const isCloseFriends = previewType === 'close-friends';
   const maskedName = maskUsername(username);
+
+  const finalSrc = imgSrc 
+    ? (imgSrc.startsWith('/api/instagram/') || !imgSrc.startsWith('http') 
+        ? imgSrc 
+        : getProxiedInstagramImage(imgSrc) || imgSrc) 
+    : null;
 
   return (
     <div
@@ -59,21 +80,22 @@ const RealStoryCircle: React.FC<RealStoryCircleProps> = ({
         }`}
       >
         <div className="w-full h-full rounded-full bg-[#080B0E] p-[2px] overflow-hidden flex items-center justify-center">
-          {!imgError && imgSrc ? (
+          {!imgError && finalSrc ? (
             <img
-              src={imgSrc}
+              src={finalSrc}
               alt={`Story de @${username}`}
               onError={handleImgError}
               className="w-full h-full object-cover rounded-full bg-neutral-900"
             />
           ) : (
+            /* Avatar placeholder on failure — NEVER a lock! */
             <div className="w-full h-full bg-neutral-900 flex items-center justify-center">
               <User className="w-6 h-6 text-neutral-400" />
             </div>
           )}
         </div>
       </div>
-      <span className="text-[11.5px] text-[#C4C7CF] font-sans font-normal truncate max-w-[74px] text-center tracking-tight leading-tight group-hover:text-white transition-colors">
+      <span className="text-[11px] text-[#F5F5F5] font-mono truncate max-w-[72px] text-center tracking-tight leading-tight">
         {maskedName}
       </span>
     </div>
@@ -83,7 +105,7 @@ const RealStoryCircle: React.FC<RealStoryCircleProps> = ({
 export interface SocialStoriesRowProps {
   mainProfilePic?: string | null;
   mainUsername: string;
-  relatedProfiles?: RelatedProfileItem[] | null;
+  relatedProfiles?: RelatedInstagramProfile[] | null;
   onStoryClick: () => void;
 }
 
@@ -97,7 +119,30 @@ export const SocialStoriesRow: React.FC<SocialStoriesRowProps> = ({
   const [mainProxyTried, setMainProxyTried] = useState(false);
   const [mainPicSrc, setMainPicSrc] = useState<string | null>(mainProfilePic || null);
 
-  React.useEffect(() => {
+  const cleanMainUser = (mainUsername || '').trim().replace(/^@/, '').toLowerCase();
+  const sessionKey = `previewStoriesViewed:${cleanMainUser}`;
+
+  // Reset por nova pesquisa: reads specifically for this username
+  const [freeStoriesViewed, setFreeStoriesViewed] = useState<number>(() => {
+    try {
+      const stored = sessionStorage.getItem(sessionKey);
+      return stored ? parseInt(stored, 10) || 0 : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  // Whenever username changes, re-sync with session key for this specific username
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(sessionKey);
+      setFreeStoriesViewed(stored ? parseInt(stored, 10) || 0 : 0);
+    } catch {
+      setFreeStoriesViewed(0);
+    }
+  }, [sessionKey]);
+
+  useEffect(() => {
     setMainPicSrc(mainProfilePic || null);
     setMainImgErr(false);
     setMainProxyTried(false);
@@ -106,68 +151,71 @@ export const SocialStoriesRow: React.FC<SocialStoriesRowProps> = ({
   const handleMainImgError = () => {
     if (!mainProxyTried && mainPicSrc && !mainPicSrc.startsWith('/api/instagram/')) {
       setMainProxyTried(true);
-      setMainPicSrc(getProxiedImageUrl(mainPicSrc));
+      setMainPicSrc(getProxiedInstagramImage(mainPicSrc));
     } else {
       setMainImgErr(true);
     }
   };
 
-  // Filter valid real related profiles from Apify provider data
-  const realRelatedProfiles = (relatedProfiles || []).filter(
-    (p) => p && typeof p.username === 'string' && p.username.trim().length > 0
-  );
+  const previewStoriesConsumed = freeStoriesViewed >= FREE_STORY_LIMIT;
 
-  // Target 6 story slots after "Seu story"
-  const TARGET_SLOTS = 6;
-  const realCount = Math.min(realRelatedProfiles.length, TARGET_SLOTS);
-  const placeholderCount = TARGET_SLOTS - realCount;
+  const handleStoryItemClick = (storyIndex: number) => {
+    if (!previewStoriesConsumed) {
+      const next = freeStoriesViewed + 1;
+      setFreeStoriesViewed(next);
+      try {
+        sessionStorage.setItem(sessionKey, String(next));
+      } catch {}
+    }
+    onStoryClick();
+  };
 
-  // We want Close Friends (Green) stories first, then normal stories (Pink/Purple)
-  // Partition: 3 Close Friends stories followed by 3 Regular stories
-  const CLOSE_FRIENDS_TARGET = 3;
+  // Section 3: Seleção e deduplicação dos perfis relacionados
+  const displayedProfiles = React.useMemo(() => {
+    const seen = new Set<string>();
+    const result: RelatedInstagramProfile[] = [];
 
-  interface StoryData {
-    id: string;
-    username: string;
-    profilePicture?: string | null;
-    isCloseFriends: boolean;
-    isPlaceholder: boolean;
-    bgGradientIdx?: number;
-  }
+    // 1. Add real profiles from API if available
+    if (relatedProfiles && Array.isArray(relatedProfiles)) {
+      for (const p of relatedProfiles) {
+        if (!p || typeof p.username !== 'string') continue;
+        const cleanUser = p.username.trim().replace(/^@/, '').toLowerCase();
+        if (!cleanUser || cleanUser === cleanMainUser || seen.has(cleanUser)) continue;
+        seen.add(cleanUser);
+        result.push(p);
+        if (result.length >= 7) break;
+      }
+    }
 
-  const allStories: StoryData[] = [];
+    // 2. If fewer than 7, complete with existing placeholders (never invent profiles)
+    if (result.length < 7) {
+      for (const fb of DEFAULT_FALLBACK_PROFILES) {
+        if (result.length >= 7) break;
+        const cleanFb = fb.username.toLowerCase();
+        if (!seen.has(cleanFb) && cleanFb !== cleanMainUser) {
+          seen.add(cleanFb);
+          result.push(fb);
+        }
+      }
+    }
 
-  // Add real profiles
-  for (let i = 0; i < realCount; i++) {
-    const p = realRelatedProfiles[i];
-    allStories.push({
-      id: `real-${p.username}-${i}`,
-      username: p.username,
-      profilePicture: p.profilePicture,
-      isCloseFriends: i < CLOSE_FRIENDS_TARGET,
-      isPlaceholder: false,
-    });
-  }
+    return result.slice(0, 7);
+  }, [relatedProfiles, cleanMainUser]);
 
-  // Add placeholder slots
-  const fallbackNames = ['car***', 'fer***', 'jp***', 'luc***', 'gab***', 'isa***'];
-  for (let i = 0; i < placeholderCount; i++) {
-    const totalIndex = realCount + i;
-    allStories.push({
-      id: `placeholder-${i}`,
-      username: fallbackNames[i % fallbackNames.length],
-      profilePicture: null,
-      isCloseFriends: totalIndex < CLOSE_FRIENDS_TARGET,
-      isPlaceholder: true,
-      bgGradientIdx: i,
-    });
-  }
+  // Distribution:
+  // 7 ou mais: 4 verdes, 3 normais
+  // 6: 4 verdes, 2 normais
+  // 5: 3 verdes, 2 normais
+  // 4: 3 verdes, 1 normal
+  // 3: 2 verdes, 1 normal
+  const totalProfiles = displayedProfiles.length;
+  const closeFriendsCount = totalProfiles >= 6 ? 4 : totalProfiles === 5 ? 3 : totalProfiles === 4 ? 3 : Math.min(totalProfiles, 2);
 
-  // Sort strictly: Green stories (isCloseFriends === true) FIRST, then Pink/Purple stories
-  const sortedStories = [...allStories].sort((a, b) => {
-    if (a.isCloseFriends === b.isCloseFriends) return 0;
-    return a.isCloseFriends ? -1 : 1;
-  });
+  const mainSrc = mainPicSrc 
+    ? (mainPicSrc.startsWith('/api/instagram/') || !mainPicSrc.startsWith('http') 
+        ? mainPicSrc 
+        : getProxiedInstagramImage(mainPicSrc) || mainPicSrc)
+    : null;
 
   return (
     <div className="w-full overflow-x-auto scrollbar-none py-[14px] px-[14px] border-b border-[#24282E]/30 bg-[#080B0E] select-none">
@@ -175,14 +223,14 @@ export const SocialStoriesRow: React.FC<SocialStoriesRowProps> = ({
         
         {/* 1. Main Profile Story Circle ("Seu story") */}
         <div
-          onClick={onStoryClick}
+          onClick={() => handleStoryItemClick(0)}
           className="flex flex-col items-center gap-1.5 cursor-pointer group"
         >
           <div className="relative w-[70px] h-[70px] rounded-full p-[2.5px] bg-gradient-to-tr from-[#F97316] via-[#EC4899] to-[#9333EA] shadow-[0_0_12px_rgba(236,72,153,0.22)] transition-transform duration-200 group-hover:scale-105 active:scale-95">
             <div className="w-full h-full rounded-full bg-[#080B0E] p-[2px] overflow-hidden flex items-center justify-center">
-              {!mainImgErr && mainPicSrc ? (
+              {!mainImgErr && mainSrc ? (
                 <img
-                  src={mainPicSrc}
+                  src={mainSrc}
                   alt={`Story de @${mainUsername}`}
                   onError={handleMainImgError}
                   className="w-full h-full object-cover rounded-full bg-neutral-900"
@@ -200,59 +248,46 @@ export const SocialStoriesRow: React.FC<SocialStoriesRowProps> = ({
             </div>
           </div>
 
-          <span className="text-[11.5px] text-[#F5F5F5] font-sans font-medium truncate max-w-[74px] text-center tracking-tight leading-tight">
+          <span className="text-[11px] text-[#F5F5F5] font-normal truncate max-w-[72px] text-center tracking-tight leading-tight">
             Seu story
           </span>
         </div>
 
-        {/* 2. Sorted Stories (Green/Melhores Amigos FIRST, then Pink/Purple) */}
-        {sortedStories.map((story) => {
-          if (!story.isPlaceholder) {
+        {/* 2. Related Profile Stories */}
+        {displayedProfiles.map((profile, idx) => {
+          // Visual preview only — not real Instagram Close Friends data.
+          const previewType: 'close-friends' | 'normal' = idx < closeFriendsCount ? 'close-friends' : 'normal';
+
+          // Locked ONLY after FREE_STORY_LIMIT has been consumed by the user!
+          const isStoryLocked = previewStoriesConsumed && idx >= FREE_STORY_LIMIT;
+
+          if (isStoryLocked) {
             return (
-              <RealStoryCircle
-                key={story.id}
-                username={story.username}
-                profilePicture={story.profilePicture || null}
-                isCloseFriends={story.isCloseFriends}
-                onClick={onStoryClick}
-              />
+              <div
+                key={`locked-story-${profile.username}-${idx}`}
+                onClick={() => handleStoryItemClick(idx + 1)}
+                className="flex flex-col items-center gap-1.5 cursor-pointer group"
+              >
+                <div className="relative w-[70px] h-[70px] rounded-full p-[2.5px] bg-gradient-to-tr from-[#F97316] via-[#EC4899] to-[#9333EA] transition-transform duration-200 group-hover:scale-105 active:scale-95">
+                  <div className="w-full h-full rounded-full bg-[#12161C] p-[2px] overflow-hidden flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <span className="text-[11px] text-[#A8A8A8] font-mono truncate max-w-[72px] text-center tracking-tight leading-tight">
+                  {maskUsername(profile.username)}
+                </span>
+              </div>
             );
           }
 
-          const maskedName = maskUsername(story.username);
-          const bgIdx = story.bgGradientIdx ?? 0;
-
           return (
-            <div
-              key={story.id}
-              onClick={onStoryClick}
-              className="flex flex-col items-center gap-1.5 cursor-pointer group"
-            >
-              <div className={`relative w-[70px] h-[70px] rounded-full p-[2.5px] transition-transform duration-200 group-hover:scale-105 active:scale-95 ${
-                story.isCloseFriends
-                  ? 'bg-[#22C55E] shadow-[0_0_10px_rgba(34,197,94,0.3)]'
-                  : 'bg-gradient-to-tr from-[#F97316] via-[#EC4899] to-[#9333EA]'
-              }`}>
-                <div className="relative w-full h-full rounded-full bg-[#080B0E] p-[2px] overflow-hidden flex items-center justify-center">
-                  <div
-                    className={`w-full h-full scale-125 ${
-                      bgIdx % 3 === 0
-                        ? 'bg-gradient-to-br from-purple-950/80 via-indigo-950/90 to-neutral-950'
-                        : bgIdx % 3 === 1
-                        ? 'bg-gradient-to-br from-rose-950/80 via-pink-950/90 to-neutral-950'
-                        : 'bg-gradient-to-br from-slate-900/90 via-blue-950/80 to-neutral-950'
-                    }`}
-                    style={{ filter: 'blur(10px) brightness(0.4)' }}
-                  />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <Lock className="w-4 h-4 text-white drop-shadow" />
-                  </div>
-                </div>
-              </div>
-              <span className="text-[11.5px] text-[#C4C7CF] font-sans font-normal truncate max-w-[74px] text-center tracking-tight leading-tight group-hover:text-white transition-colors">
-                {maskedName}
-              </span>
-            </div>
+            <RealStoryCircle
+              key={`story-${profile.username}-${idx}`}
+              username={profile.username}
+              profilePicture={profile.profilePicture}
+              previewType={previewType}
+              onClick={() => handleStoryItemClick(idx + 1)}
+            />
           );
         })}
 

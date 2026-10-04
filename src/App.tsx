@@ -1,35 +1,23 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { MatrixBackground } from './components/MatrixBackground';
 import { EspiaHeroScreen } from './components/EspiaHeroScreen';
-
-// Lazy-loaded pages to reduce initial bundle and improve mobile first paint
-const FeedPage = lazy(() => import('./pages/FeedPage').then(m => ({ default: m.FeedPage })));
-const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
-const DirectPage = lazy(() => import('./pages/DirectPage').then(m => ({ default: m.DirectPage })));
-const ChatPage = lazy(() => import('./pages/ChatPage').then(m => ({ default: m.ChatPage })));
-const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
-const PreparingPage = lazy(() => import('./pages/PreparingPage').then(m => ({ default: m.PreparingPage })));
-const UnlockPage = lazy(() => import('./pages/UnlockPage').then(m => ({ default: m.UnlockPage })));
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const InstagramInvestigationPage = lazy(() => import('./pages/InstagramInvestigationPage').then(m => ({ default: m.InstagramInvestigationPage })));
-const ServiceInvestigationPage = lazy(() => import('./pages/ServiceInvestigationPage').then(m => ({ default: m.ServiceInvestigationPage })));
-const AntiAlertPage = lazy(() => import('./pages/AntiAlertPage').then(m => ({ default: m.AntiAlertPage })));
-const CreditsPage = lazy(() => import('./pages/CreditsPage').then(m => ({ default: m.CreditsPage })));
-const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
-
-// Lazy-loaded scanner modal - only loaded when user initiates search
-const InteractiveScannerModal = lazy(() =>
-  import('./components/InteractiveScannerModal').then(m => ({ default: m.InteractiveScannerModal }))
-);
-
-const PageLoadingFallback: React.FC = () => (
-  <div className="min-h-screen bg-[#050507] flex items-center justify-center select-none" aria-busy="true">
-    <div className="w-9 h-9 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-  </div>
-);
+import { InteractiveScannerModal } from './components/InteractiveScannerModal';
+import { FeedPage } from './pages/FeedPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { DirectPage } from './pages/DirectPage';
+import { ChatPage } from './pages/ChatPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { PreparingPage } from './pages/PreparingPage';
+import { UnlockPage } from './pages/UnlockPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { InstagramInvestigationPage } from './pages/InstagramInvestigationPage';
+import { ServiceInvestigationPage } from './pages/ServiceInvestigationPage';
+import { AntiAlertPage } from './pages/AntiAlertPage';
+import { CreditsPage } from './pages/CreditsPage';
+import { LoginPage } from './pages/LoginPage';
 
 function RouteNormalizer() {
   const location = useLocation();
@@ -103,46 +91,40 @@ function RouteNormalizer() {
       }
     }
 
-    // 3. Check case sensitivity or trailing slash
-    const rawPath = location.pathname;
-    const lower = rawPath.toLowerCase();
-    const withoutTrailing = lower.length > 1 ? lower.replace(/\/+$/, '') : lower;
-    if (rawPath !== withoutTrailing) {
-      navigate(withoutTrailing + location.search + location.hash, { replace: true });
+    // 3. Normalize trailing slashes on pathname
+    if (location.pathname.length > 1 && location.pathname.endsWith('/')) {
+      const trimmed = location.pathname.slice(0, -1);
+      navigate(trimmed + location.search + location.hash, { replace: true });
     }
-
-    // 4. Meta Pixel SPA PageView tracking on route change
-    if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'PageView');
-    }
-  }, [location.pathname, location.search, location.hash, navigate]);
+  }, [location, navigate]);
 
   return null;
 }
 
 function FallbackRedirect() {
   const location = useLocation();
-  const path = location.pathname.toLowerCase();
+  const path = location.pathname.toLowerCase().replace(/\/$/, '');
 
-  if (path.includes('dashboard') || path.includes('painel')) {
+  if (path.includes('dashboard') || path.includes('painel') || path.includes('app')) {
     return <Navigate to="/dashboard" replace />;
   }
-
   if (path.includes('login') || path.includes('entrar') || path.includes('auth')) {
     return <Navigate to="/login" replace />;
   }
-
   if (
-    path.includes('back') ||
-    path.includes('redirect') ||
+    path.includes('back-redirect') ||
+    path.includes('backredirect') ||
+    path.includes('back_redirect') ||
     path.includes('alerta') ||
-    path.includes('vigilancia')
+    path.includes('anti-alerta')
   ) {
     return <Navigate to="/back-redirect" replace />;
   }
-
-  if (path.includes('unlock') || path.includes('acesso') || path.includes('vip')) {
+  if (path.includes('unlock') || path.includes('desbloqueio') || path.includes('vip')) {
     return <Navigate to="/unlock" replace />;
+  }
+  if (path.includes('investigar') || path.includes('investigacao')) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Navigate to="/" replace />;
@@ -162,14 +144,10 @@ function LandingPage() {
       </main>
 
       {/* 3. Interactive lookup & transition modal */}
-      {isScannerOpen && (
-        <Suspense fallback={null}>
-          <InteractiveScannerModal
-            isOpen={isScannerOpen}
-            onClose={() => setIsScannerOpen(false)}
-          />
-        </Suspense>
-      )}
+      <InteractiveScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+      />
     </div>
   );
 }
@@ -179,8 +157,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <RouteNormalizer />
-        <Suspense fallback={<PageLoadingFallback />}>
-          <Routes>
+        <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -226,7 +203,7 @@ export default function App() {
             }
           />
           <Route
-            path="/app"
+            path="/dashboard/*"
             element={
               <ProtectedRoute>
                 <DashboardPage />
@@ -234,16 +211,7 @@ export default function App() {
             }
           />
           <Route
-            path="/app/"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/dashboard/instagram"
+            path="/investigar/instagram"
             element={
               <ProtectedRoute>
                 <InstagramInvestigationPage />
@@ -251,7 +219,23 @@ export default function App() {
             }
           />
           <Route
-            path="/dashboard/:service"
+            path="/investigar/instagram/"
+            element={
+              <ProtectedRoute>
+                <InstagramInvestigationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/investigar/:service"
+            element={
+              <ProtectedRoute>
+                <ServiceInvestigationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/investigar/:service/"
             element={
               <ProtectedRoute>
                 <ServiceInvestigationPage />
@@ -316,7 +300,6 @@ export default function App() {
           {/* Smart Fallback */}
           <Route path="*" element={<FallbackRedirect />} />
         </Routes>
-        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

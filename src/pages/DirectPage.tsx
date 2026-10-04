@@ -6,6 +6,7 @@ import { StoryNotesRow } from '../components/inbox/StoryNotesRow';
 import { ConversationList } from '../components/inbox/ConversationList';
 import { VipGateModal } from '../components/activity/VipGateModal';
 import { PreviewBanner } from '../components/social/PreviewBanner';
+import { maskUsername } from '../components/social/SocialStoriesRow';
 import type { ConversationData } from '../components/inbox/ConversationItem';
 
 export const InboxPreviewPage: React.FC = () => {
@@ -17,50 +18,30 @@ export const InboxPreviewPage: React.FC = () => {
   const targetFirstName = profile?.fullName ? profile.fullName.split(' ')[0] : '';
   const firstMsgText = targetFirstName ? `${targetFirstName} adivinha o que vc esq...` : 'Adivinha o que vc esq...';
 
-  const conversations: ConversationData[] = [
-    {
-      id: 'conv-1',
-      avatarSrc: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-      handle: 'Fer*****',
-      previewMessage: firstMsgText,
-      timestamp: 'Agora',
-    },
-    {
-      id: 'conv-2',
-      avatarSrc: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80',
-      handle: 'ken*****',
-      previewMessage: 'Encaminhou um reel de jonas....',
-      timestamp: '2 d',
-    },
-    {
-      id: 'conv-3',
-      avatarSrc: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
-      handle: 'igo*****',
-      previewMessage: 'Blz depois a gente se fala',
-      timestamp: '2 d',
-    },
-    {
-      id: 'conv-4',
-      avatarSrc: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80',
-      handle: 'bru*****',
-      previewMessage: 'Vídeo enviado',
-      timestamp: '3 d',
-    },
-    {
-      id: 'conv-5',
-      avatarSrc: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80',
-      handle: 'luc*****',
-      previewMessage: 'Mandou um áudio',
-      timestamp: '4 d',
-    },
-    {
-      id: 'conv-6',
-      avatarSrc: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
-      handle: 'gab*****',
-      previewMessage: 'Curtiu sua mensagem',
-      timestamp: '5 d',
-    },
+  const related = (profile?.relatedProfiles || []).filter(p => p && p.username);
+
+  const defaultMessages = [
+    { msg: firstMsgText, time: 'Agora' },
+    { msg: 'Encaminhou um reel de jonas....', time: '2 d' },
+    { msg: 'Blz depois a gente se fala', time: '2 d' },
+    { msg: 'Vídeo enviado', time: '3 d' },
+    { msg: 'Mandou um áudio', time: '4 d' },
+    { msg: 'Curtiu sua mensagem', time: '5 d' },
   ];
+
+  const conversations: ConversationData[] = defaultMessages.map((item, idx) => {
+    const relUser = related[idx];
+    const handle = relUser?.username ? maskUsername(relUser.username) : `usr_${idx + 1}*****`;
+    const avatar = relUser?.profilePicture || '';
+
+    return {
+      id: `conv-${idx + 1}`,
+      avatarSrc: avatar,
+      handle,
+      previewMessage: item.msg,
+      timestamp: item.time,
+    };
+  });
 
   const handleOpenVip = () => {
     setIsVipModalOpen(true);
@@ -104,6 +85,7 @@ export const InboxPreviewPage: React.FC = () => {
         {/* Top Story / Notes Row */}
         <StoryNotesRow
           selfAvatar={profile?.profilePicture || undefined}
+          relatedProfiles={profile?.relatedProfiles}
           onNoteClick={handleOpenVip}
         />
 

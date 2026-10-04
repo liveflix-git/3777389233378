@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Facebook } from 'lucide-react';
 import { getEspiaProfile } from '../../services/espiaSession';
@@ -6,124 +6,39 @@ import { AnimatedMaskedField } from './AnimatedMaskedField';
 import { PreparationStatusCard } from './PreparationStatusCard';
 import { SuccessToast } from './SuccessToast';
 
-const STATUS_MESSAGES = [
-  'Sincronização pendente.',
-  'Validando sessão...',
-  'Processando visualização...',
-  'Quebrando criptografia...',
-  'Preparando ambiente...',
-  'Revalidando informações...',
-  'Finalizando análise...',
-];
-
 export const PreparationScreen: React.FC = () => {
   const navigate = useNavigate();
   const savedProfile = getEspiaProfile();
-  const username = savedProfile?.username || 'usuario.instagram';
+  const username = savedProfile?.username || 'felp_gomes7';
 
-  const [progress, setProgress] = useState(0);
-  const [stageIndex, setStageIndex] = useState(0);
-  const [messageIndex, setMessageIndex] = useState(0);
-  const [isComplete, setIsComplete] = useState(false);
+  const [phase, setPhase] = useState<'trying' | 'success'>('trying');
   const [showToast, setShowToast] = useState(false);
+  const [showPasswordError, setShowPasswordError] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
-  useEffect(() => {
-    // 0.4s -> 8%
-    const t0 = setTimeout(() => {
-      setProgress(8);
-      setMessageIndex(0);
-    }, 400);
+  const isComplete = phase === 'success';
 
-    // 1.2s -> 17%
-    const t1 = setTimeout(() => {
-      setProgress(17);
-      setMessageIndex(1);
-    }, 1200);
+  // Triggered strictly after the typing state machine reaches minimum 12 seconds
+  const handleSimulationComplete = useCallback(() => {
+    setShowPasswordError(false);
+    setPhase('success');
+    setShowToast(true);
 
-    // 2.2s -> 26%, Stage 0
-    const t2 = setTimeout(() => {
-      setProgress(26);
-      setStageIndex(0);
-      setMessageIndex(2);
-    }, 2200);
-
-    // 3.4s -> 34%, Stage 1
-    const t3 = setTimeout(() => {
-      setProgress(34);
-      setStageIndex(1);
-      setMessageIndex(3);
-    }, 3400);
-
-    // 4.6s -> 47%
-    const t4 = setTimeout(() => {
-      setProgress(47);
-      setMessageIndex(4);
-    }, 4600);
-
-    // 5.8s -> 59%, Stage 2
-    const t5 = setTimeout(() => {
-      setProgress(59);
-      setStageIndex(2);
-      setMessageIndex(5);
-    }, 5800);
-
-    // 7.0s -> 68%
-    const t6 = setTimeout(() => {
-      setProgress(68);
-      setMessageIndex(6);
-    }, 7000);
-
-    // 8.1s -> 79%, Stage 3
-    const t7 = setTimeout(() => {
-      setProgress(79);
-      setStageIndex(3);
-    }, 8100);
-
-    // 9.1s -> 88%
-    const t8 = setTimeout(() => {
-      setProgress(88);
-    }, 9100);
-
-    // 9.8s -> 96%, Stage 4
-    const t9 = setTimeout(() => {
-      setProgress(96);
-      setStageIndex(4);
-    }, 9800);
-
-    // 10.5s -> 100%, Complete state reached, Toast shown!
-    const t10 = setTimeout(() => {
-      setProgress(100);
-      setIsComplete(true);
-      setShowToast(true);
-    }, 10500);
-
-    // 11.4s -> Start smooth fade-out transition
-    const t11 = setTimeout(() => {
+    // After success toast display, smooth fade-out and navigation to /feed
+    setTimeout(() => {
       setIsFadingOut(true);
-    }, 11400);
+    }, 1800);
 
-    // 11.8s -> Automatically navigate to /feed
-    const t12 = setTimeout(() => {
+    setTimeout(() => {
       navigate('/feed');
-    }, 11800);
-
-    return () => {
-      clearTimeout(t0);
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-      clearTimeout(t5);
-      clearTimeout(t6);
-      clearTimeout(t7);
-      clearTimeout(t8);
-      clearTimeout(t9);
-      clearTimeout(t10);
-      clearTimeout(t11);
-      clearTimeout(t12);
-    };
+    }, 2200);
   }, [navigate]);
+
+  const handleEntrarClick = () => {
+    if (isComplete) {
+      navigate('/feed');
+    }
+  };
 
   return (
     <div
@@ -131,8 +46,8 @@ export const PreparationScreen: React.FC = () => {
         isFadingOut ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      {/* Top Green Success Toast (Acesso concluído com sucesso!) */}
-      <SuccessToast show={showToast} message="Acesso concluído com sucesso!" />
+      {/* Top Green Success Toast (✓ Conta acessada com sucesso!) */}
+      <SuccessToast show={showToast} message="Conta acessada com sucesso!" />
 
       {/* Main Container - Mobile First Clean Social Login View */}
       <div className="w-full max-w-[350px] mx-auto flex flex-col justify-between min-h-[100dvh] py-2 z-10">
@@ -161,43 +76,39 @@ export const PreparationScreen: React.FC = () => {
             />
           </div>
 
-          {/* Field 2: Animated Masked Field with character-by-character typing & deleting effect */}
+          {/* Field 2: Character-by-character Animated Masked Password Field */}
           <div className="flex flex-col">
-            <AnimatedMaskedField isComplete={isComplete} />
+            <AnimatedMaskedField
+              isComplete={isComplete}
+              onSimulationComplete={handleSimulationComplete}
+              onErrorStateChange={setShowPasswordError}
+            />
           </div>
 
-          {/* Red Status Message Below Inputs */}
-          <div className="min-h-[18px] px-0.5 pt-0.5">
-            {!isComplete ? (
-              <span className="text-[#FF3B30] text-[12px] font-medium leading-tight block transition-all duration-300">
-                {STATUS_MESSAGES[messageIndex]}
+          {/* Red Error Message Below Inputs during validation of each attempt */}
+          <div className="min-h-[22px] flex items-center justify-center pt-0.5 pb-1">
+            {showPasswordError && !isComplete ? (
+              <span className="text-[#ED4956] text-[12.5px] font-normal text-center leading-tight block">
+                A senha que você inseriu está incorreta.
               </span>
-            ) : (
-              <span className="text-[#22C55E] text-[12px] font-medium leading-tight block transition-all duration-300">
-                Sessão validada com sucesso.
-              </span>
-            )}
+            ) : null}
           </div>
 
-          {/* Compact Preparation Status Card */}
-          <PreparationStatusCard
-            progress={progress}
-            stageIndex={stageIndex}
-            isComplete={isComplete}
-          />
+          {/* Status Card (Spinner roxo / Check roxo) */}
+          <PreparationStatusCard isComplete={isComplete} />
 
           {/* Action Button "Entrar" */}
           <button
             type="button"
             disabled={!isComplete}
-            onClick={() => navigate('/feed')}
+            onClick={handleEntrarClick}
             className={`w-full h-[44px] rounded-[6px] font-semibold text-[14px] text-white flex items-center justify-center transition-all duration-200 select-none mt-1.5 ${
               isComplete
                 ? 'bg-[#0095F6] hover:bg-[#1877F2] active:scale-[0.98] cursor-pointer shadow-md'
-                : 'bg-[#005C9E] opacity-70 cursor-not-allowed'
+                : 'bg-[#0095F6]/40 text-white/50 cursor-not-allowed'
             }`}
           >
-            {isComplete ? 'Entrar' : 'Carregando...'}
+            Entrar
           </button>
 
           {/* Visual Non-functional Links */}

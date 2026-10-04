@@ -7,7 +7,8 @@ import {
   ArrowRight, 
   Loader2,
   AlertTriangle,
-  ChevronRight
+  ChevronRight,
+  User
 } from 'lucide-react';
 import { 
   fetchInstagramProfile, 
@@ -23,6 +24,63 @@ interface InteractiveScannerModalProps {
 }
 
 type ModalStage = 'input' | 'confirm';
+
+const ScannerModalAvatar: React.FC<{
+  profilePicture: string | null;
+  username: string;
+}> = ({ profilePicture, username }) => {
+  const getInitialSrc = () => {
+    if (!profilePicture) {
+      return `/api/instagram/profile-image?username=${encodeURIComponent(username)}`;
+    }
+    if (profilePicture.startsWith('/api/instagram/')) {
+      return profilePicture;
+    }
+    if (profilePicture.startsWith('http')) {
+      return `/api/instagram/profile-image?url=${encodeURIComponent(profilePicture)}`;
+    }
+    return profilePicture;
+  };
+
+  const [src, setSrc] = useState<string | null>(getInitialSrc);
+  const [attempt, setAttempt] = useState(0);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setSrc(getInitialSrc());
+    setAttempt(0);
+    setHasError(false);
+  }, [profilePicture, username]);
+
+  const handleError = () => {
+    if (attempt === 0) {
+      setAttempt(1);
+      setSrc(`/api/instagram/profile-image?username=${encodeURIComponent(username)}`);
+    } else if (attempt === 1 && profilePicture && profilePicture.startsWith('http')) {
+      setAttempt(2);
+      setSrc(`/api/instagram/proxy-image?url=${encodeURIComponent(profilePicture)}`);
+    } else {
+      setHasError(true);
+    }
+  };
+
+  if (hasError || !src) {
+    return (
+      <div className="w-full h-full bg-neutral-900 flex items-center justify-center">
+        <User className="w-10 h-10 text-neutral-400" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={`@${username}`}
+      onError={handleError}
+      className="w-full h-full object-cover"
+    />
+  );
+};
 
 export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = ({
   isOpen,
@@ -262,10 +320,9 @@ export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = (
               <div className="flex items-center gap-4">
                 {/* Large Profile Picture */}
                 <div className="w-[82px] h-[82px] rounded-full overflow-hidden shrink-0 bg-neutral-900 border border-neutral-800 shadow-md">
-                  <img
-                    src={foundProfile.profilePicture || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`}
-                    alt={foundProfile.username}
-                    className="w-full h-full object-cover"
+                  <ScannerModalAvatar
+                    profilePicture={foundProfile.profilePicture}
+                    username={foundProfile.username}
                   />
                 </div>
 

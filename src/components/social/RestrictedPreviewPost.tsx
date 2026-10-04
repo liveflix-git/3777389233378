@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Lock, Heart, MessageCircle, Send, Bookmark, MoreVertical } from 'lucide-react';
+import { Lock, Heart, MessageCircle, Send, Bookmark, MoreVertical, User } from 'lucide-react';
 import type { DataOrigin } from '../../services/instagramProfile';
 
 export interface RestrictedPreviewPostProps {
   maskedUsername: string;
+  authorAvatar?: string | null;
   previewAge: string;
   previewImageUrl?: string;
   likedPreview?: boolean;
@@ -19,6 +20,7 @@ export interface RestrictedPreviewPostProps {
 
 export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
   maskedUsername,
+  authorAvatar,
   previewAge,
   previewImageUrl = 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&auto=format&fit=crop&q=80',
   likedPreview = false,
@@ -30,6 +32,14 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
   // Internal tracking tags - strictly isolated from target profile data
   const origin: DataOrigin = 'ui-preview';
   const interactionOrigin = 'ui-preview';
+
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(authorAvatar || null);
+  const [avatarErr, setAvatarErr] = useState(false);
+
+  React.useEffect(() => {
+    setAvatarSrc(authorAvatar || null);
+    setAvatarErr(false);
+  }, [authorAvatar]);
 
   const [isLiked, setIsLiked] = useState(likedPreview);
   const [isBookmarked, setIsBookmarked] = useState(savedPreview);
@@ -44,20 +54,27 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
       data-interaction-origin={interactionOrigin}
       className={`w-full bg-[#080B0E] ${!isLast ? 'border-b border-[#20242A]' : ''}`}
     >
-      {/* 1. Header (Masked User + Blurred/Synthetic Avatar) */}
+      {/* 1. Header (Masked User + Real or Synthetic Avatar) */}
       <div className="h-[54px] flex items-center justify-between px-[14px] py-2">
         <div
           onClick={onBlockedClick}
           className="flex items-center gap-3 cursor-pointer group"
         >
-          {/* Protected/Blurred Synthetic Avatar */}
-          <div className="w-[34px] h-[34px] rounded-full p-[1.5px] bg-gradient-to-tr from-neutral-700 via-neutral-800 to-neutral-900 shrink-0 shadow-sm overflow-hidden group-hover:scale-105 transition-transform">
+          {/* Avatar circle */}
+          <div className="w-[34px] h-[34px] rounded-full p-[1.5px] bg-gradient-to-tr from-[#F97316] via-[#EC4899] to-[#9333EA] shrink-0 shadow-sm overflow-hidden group-hover:scale-105 transition-transform">
             <div className="w-full h-full rounded-full bg-neutral-900 overflow-hidden flex items-center justify-center relative">
-              <div
-                className="w-full h-full bg-gradient-to-br from-indigo-900 via-purple-900 to-neutral-900"
-                style={{ filter: 'blur(8px) brightness(0.65)' }}
-              />
-              <Lock className="w-3.5 h-3.5 text-neutral-400 absolute" />
+              {!avatarErr && avatarSrc ? (
+                <img
+                  src={avatarSrc.startsWith('/api/instagram/') || !avatarSrc.startsWith('http') ? avatarSrc : `/api/instagram/profile-image?url=${encodeURIComponent(avatarSrc)}`}
+                  alt={maskedUsername}
+                  onError={() => setAvatarErr(true)}
+                  className="w-full h-full object-cover rounded-full bg-neutral-900"
+                />
+              ) : (
+                <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                  <User className="w-3.5 h-3.5 text-neutral-400" />
+                </div>
+              )}
             </div>
           </div>
 

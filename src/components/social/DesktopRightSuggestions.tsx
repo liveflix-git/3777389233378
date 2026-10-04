@@ -1,11 +1,12 @@
 import React from 'react';
 import { BadgeCheck } from 'lucide-react';
-import type { InstagramProfileData, RelatedProfileItem } from '../../services/instagramProfile';
+import type { InstagramProfileData, RelatedInstagramProfile } from '../../services/instagramProfile';
 import { RobustAvatar } from '../../utils/imageHelper';
+import { maskUsername } from './SocialStoriesRow';
 
 interface DesktopRightSuggestionsProps {
   profile?: InstagramProfileData | null;
-  onSelectSuggestion?: (item: RelatedProfileItem) => void;
+  onSelectSuggestion?: (item: RelatedInstagramProfile) => void;
   onBlockedClick?: () => void;
   onOpenSearch?: () => void;
 }
@@ -16,9 +17,54 @@ export const DesktopRightSuggestions: React.FC<DesktopRightSuggestionsProps> = (
   onBlockedClick,
   onOpenSearch,
 }) => {
-  const relatedList = profile?.relatedProfiles && profile.relatedProfiles.length > 0
-    ? profile.relatedProfiles.slice(0, 5)
-    : [];
+  const cleanMainUser = (profile?.username || '').trim().replace(/^@/, '').toLowerCase();
+
+  // Deduplicate and filter target profile
+  const validRelated = React.useMemo(() => {
+    if (!profile?.relatedProfiles || !Array.isArray(profile.relatedProfiles)) return [];
+    const seen = new Set<string>();
+    const list: RelatedInstagramProfile[] = [];
+
+    for (const p of profile.relatedProfiles) {
+      if (!p || typeof p.username !== 'string') continue;
+      const clean = p.username.trim().replace(/^@/, '').toLowerCase();
+      if (!clean || clean === cleanMainUser || seen.has(clean)) continue;
+      seen.add(clean);
+      list.push(p);
+    }
+    return list;
+  }, [profile?.relatedProfiles, cleanMainUser]);
+
+  // Section 9: Se houver dados suficientes (> 5), usar recorte estável diferente dos primeiros stories (ex: slice 3..8)
+  const suggestionsList: RelatedInstagramProfile[] = React.useMemo(() => {
+    if (validRelated.length >= 6) {
+      return validRelated.slice(3, 8);
+    }
+    if (validRelated.length > 0) {
+      // Use existing, and fill remainder with fallback placeholders up to 5
+      const result = [...validRelated];
+      const fallbackPlaceholders: RelatedInstagramProfile[] = [
+        { username: 'perfil_a', isVerified: false, profilePicture: undefined },
+        { username: 'conta_b', isVerified: false, profilePicture: undefined },
+        { username: 'user_c', isVerified: false, profilePicture: undefined },
+        { username: 'perfil_d', isVerified: false, profilePicture: undefined },
+        { username: 'conta_e', isVerified: false, profilePicture: undefined },
+      ];
+      for (const fb of fallbackPlaceholders) {
+        if (result.length >= 5) break;
+        result.push(fb);
+      }
+      return result.slice(0, 5);
+    }
+    // Neutral fallback if zero related profiles returned (strictly neutral, NO stock/fake human photos)
+    return [
+      { username: 'perfil_a', isVerified: false, profilePicture: undefined },
+      { username: 'conta_b', isVerified: false, profilePicture: undefined },
+      { username: 'user_c', isVerified: false, profilePicture: undefined },
+      { username: 'perfil_d', isVerified: false, profilePicture: undefined },
+      { username: 'conta_e', isVerified: false, profilePicture: undefined },
+    ];
+  }, [validRelated]);
 
   return (
     <aside className="hidden lg:flex flex-col w-[310px] p-6 space-y-6 text-[#F5F5F5] select-none shrink-0 sticky top-0 h-screen overflow-y-auto scrollbar-none bg-[#080B0E]">
@@ -65,34 +111,32 @@ export const DesktopRightSuggestions: React.FC<DesktopRightSuggestionsProps> = (
         </div>
       )}
 
-      {/* 2. Suggestions list (Real provider data) */}
-      {relatedList.length > 0 && (
-        <div className="space-y-3.5 pt-2 border-t border-[#24282E]/40">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-[#A8A8A8]">Sugestões para você</span>
-            <button
-              type="button"
-              onClick={onBlockedClick}
-              className="text-[11px] font-semibold text-white hover:text-neutral-300 cursor-pointer"
-            >
-              Ver tudo
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {relatedList.map((item, idx) => (
-              <SuggestionItem
-                key={`${item.username}-${idx}`}
-                item={item}
-                onClick={() => {
-                  if (onSelectSuggestion) onSelectSuggestion(item);
-                  else if (onBlockedClick) onBlockedClick();
-                }}
-              />
-            ))}
-          </div>
+      {/* 2. Suggestions list (Real provider data from relatedProfiles) */}
+      <div className="space-y-3.5 pt-2 border-t border-[#24282E]/40">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-bold text-[#A8A8A8]">Sugestões para você</span>
+          <button
+            type="button"
+            onClick={onBlockedClick}
+            className="text-[11px] font-semibold text-white hover:text-neutral-300 cursor-pointer"
+          >
+            Ver tudo
+          </button>
         </div>
-      )}
+
+        <div className="space-y-3">
+          {suggestionsList.map((item, idx) => (
+            <SuggestionItem
+              key={`${item.username}-${idx}`}
+              item={item}
+              onClick={() => {
+                if (onSelectSuggestion) onSelectSuggestion(item);
+                else if (onBlockedClick) onBlockedClick();
+              }}
+            />
+          ))}
+        </div>
+      </div>
 
       {/* 3. Footer Links */}
       <div className="pt-4 space-y-2.5 text-[11px] text-[#A8A8A8]">
@@ -115,7 +159,7 @@ export const DesktopRightSuggestions: React.FC<DesktopRightSuggestionsProps> = (
 };
 
 const SuggestionItem: React.FC<{
-  item: RelatedProfileItem;
+  item: RelatedInstagramProfile;
   onClick: () => void;
 }> = ({ item, onClick }) => {
   return (
@@ -136,7 +180,7 @@ const SuggestionItem: React.FC<{
         <div className="min-w-0">
           <div className="flex items-center gap-1">
             <span className="font-semibold text-xs text-white truncate max-w-[110px]">
-              {item.username}
+              {maskUsername(item.username)}
             </span>
             {item.isVerified && (
               <BadgeCheck className="w-3 h-3 text-[#0095F6] fill-[#0095F6]/20 shrink-0" />

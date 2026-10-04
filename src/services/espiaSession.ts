@@ -450,6 +450,12 @@ export function logoutDashboardUser(): void {
 export function saveEspiaProfile(profile: InstagramProfileData): void {
   try {
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    // Reset stories viewed state specifically for this new search
+    const cleanUser = profile.username.trim().replace(/^@/, '').toLowerCase();
+    sessionStorage.removeItem(`previewStoriesViewed:${cleanUser}`);
+    sessionStorage.removeItem(`previewStoriesConsumed:${cleanUser}`);
+    sessionStorage.removeItem('espia_free_stories_viewed');
+    sessionStorage.removeItem('previewStoriesConsumed');
   } catch (err) {
     console.error('[EspiaSession] Failed to save profile to localStorage:', err);
   }
@@ -477,6 +483,8 @@ export function clearEspiaProfile(): void {
     localStorage.removeItem(PROFILE_STORAGE_KEY);
     sessionStorage.removeItem(PREVIEW_TIMER_KEY);
     sessionStorage.removeItem('espia_toast_shown');
+    sessionStorage.removeItem('espia_free_stories_viewed');
+    sessionStorage.removeItem('previewStoriesConsumed');
   } catch (err) {
     console.error('[EspiaSession] Failed to clear profile:', err);
   }

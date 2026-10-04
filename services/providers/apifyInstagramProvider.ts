@@ -1,13 +1,17 @@
 export type DataOrigin = 'provider' | 'placeholder' | 'ui-preview';
 
-export interface RelatedProfileItem {
-  origin: 'provider';
+export interface RelatedInstagramProfile {
+  id?: string;
   username: string;
-  fullName: string | null;
-  profilePicture: string | null;
-  isVerified: boolean | null;
-  isPrivate: boolean | null;
+  fullName?: string;
+  isVerified?: boolean;
+  isPrivate?: boolean;
+  profilePicture?: string;
 }
+
+export type RelatedProfileItem = RelatedInstagramProfile & {
+  origin?: 'provider';
+};
 
 export interface LatestPostItem {
   origin: 'provider';
@@ -32,7 +36,7 @@ export interface InstagramProfileData {
   posts: number | null;
   isPrivate: boolean | null;
   isVerified: boolean | null;
-  relatedProfiles?: RelatedProfileItem[] | null;
+  relatedProfiles?: RelatedInstagramProfile[] | null;
   latestPosts?: LatestPostItem[] | null;
 }
 
@@ -144,32 +148,43 @@ export function normalizeApifyProfile(rawItem: RawApifyInstagramProfileItem): In
   const rawFullName = rawItem.fullName?.trim();
   const rawBio = rawItem.biography !== undefined && rawItem.biography !== null ? rawItem.biography : null;
 
-  // 1. Related Profiles (max 5)
+  // 1. Related Profiles (preserve order, filter target and duplicates, up to 12 items)
   const rawRelated = rawItem.relatedProfiles || rawItem.related_profiles;
-  let normalizedRelated: RelatedProfileItem[] | null = null;
+  let normalizedRelated: RelatedInstagramProfile[] | null = null;
+  const targetUsername = normalizeUsername(rawItem.username);
 
   if (Array.isArray(rawRelated) && rawRelated.length > 0) {
-    const validRelated = rawRelated
-      .filter((r) => r && typeof r.username === 'string' && r.username.trim().length > 0)
-      .slice(0, 5)
-      .map((r) => {
-        const u = r.username!.trim().replace(/^@/, '');
-        const fn = (r.fullName || r.full_name || '')?.trim();
-        const rawPic = r.profilePicUrl || r.profile_pic_url || (typeof r.profilePicUrlHD === 'string' ? r.profilePicUrlHD : null);
-        const pic = typeof rawPic === 'string' && rawPic.trim().length > 0 ? rawPic.trim() : null;
-        const ver = typeof r.isVerified === 'boolean' ? r.isVerified : typeof r.is_verified === 'boolean' ? r.is_verified : null;
-        const priv = typeof r.isPrivate === 'boolean' ? r.isPrivate : typeof r.is_private === 'boolean' ? r.is_private : null;
+    const seenUsernames = new Set<string>();
+    const validRelated: RelatedInstagramProfile[] = [];
 
-        const item: RelatedProfileItem = {
-          origin: 'provider',
-          username: u,
-          fullName: fn || null,
-          profilePicture: pic,
-          isVerified: ver,
-          isPrivate: priv,
-        };
-        return item;
+    for (const r of rawRelated) {
+      if (!r || typeof r.username !== 'string') continue;
+      const u = r.username.trim().replace(/^@/, '');
+      const uNorm = normalizeUsername(u);
+      if (!uNorm || uNorm === targetUsername || seenUsernames.has(uNorm)) {
+        continue;
+      }
+      seenUsernames.add(uNorm);
+
+      const fn = (r.fullName || r.full_name || '')?.trim();
+      const rawPic = r.profilePicUrl || r.profile_pic_url || (typeof r.profilePicUrlHD === 'string' ? r.profilePicUrlHD : null);
+      const pic = typeof rawPic === 'string' && rawPic.trim().length > 0 ? rawPic.trim() : null;
+      const ver = typeof r.isVerified === 'boolean' ? r.isVerified : typeof r.is_verified === 'boolean' ? r.is_verified : undefined;
+      const priv = typeof r.isPrivate === 'boolean' ? r.isPrivate : typeof r.is_private === 'boolean' ? r.is_private : undefined;
+
+      validRelated.push({
+        id: r.id ? String(r.id) : undefined,
+        username: u,
+        fullName: fn || undefined,
+        profilePicture: pic
+          ? `/api/instagram/profile-image?url=${encodeURIComponent(pic)}`
+          : undefined,
+        isVerified: ver,
+        isPrivate: priv,
       });
+
+      if (validRelated.length >= 12) break;
+    }
 
     if (validRelated.length > 0) {
       normalizedRelated = validRelated;
@@ -191,7 +206,9 @@ export function normalizeApifyProfile(rawItem: RawApifyInstagramProfileItem): In
           origin: 'provider',
           id: p.id ? String(p.id) : undefined,
           type: p.type || null,
-          displayUrl: dispUrl,
+          displayUrl: dispUrl
+            ? `/api/instagram/profile-image?url=${encodeURIComponent(dispUrl)}`
+            : null,
           caption: p.caption ? String(p.caption) : null,
           timestamp: p.timestamp ? String(p.timestamp) : null,
           likesCount: typeof p.likesCount === 'number' ? p.likesCount : null,
@@ -208,11 +225,15 @@ export function normalizeApifyProfile(rawItem: RawApifyInstagramProfileItem): In
     }
   }
 
+  const rawProfilePic = rawItem.profilePicUrlHD || rawItem.profilePicUrl || null;
+
   return {
     username: rawItem.username,
     fullName: rawFullName ? rawFullName : null,
     biography: rawBio,
-    profilePicture: rawItem.profilePicUrlHD || rawItem.profilePicUrl || null,
+    profilePicture: rawProfilePic
+      ? `/api/instagram/profile-image?url=${encodeURIComponent(rawProfilePic)}`
+      : null,
     followers: typeof rawItem.followersCount === 'number' ? rawItem.followersCount : null,
     following: typeof rawItem.followsCount === 'number' ? rawItem.followsCount : null,
     posts: typeof rawItem.postsCount === 'number' ? rawItem.postsCount : null,
@@ -260,6 +281,7 @@ export class ApifyInstagramProvider implements InstagramProfileProvider {
         },
         body: JSON.stringify({
           usernames: [requested],
+          includeRelatedProfiles: true,
         }),
         signal: AbortSignal.timeout(60000),
       });
@@ -296,19 +318,17 @@ export class ApifyInstagramProvider implements InstagramProfileProvider {
         };
       }
 
-      // IMPRIMIR RAW APIFY PROFILE COMPLETO
-      console.log('RAW APIFY PROFILE', item);
-
-      console.log('PROFILE:\n', item.username);
-      console.log('RELATED PROFILES:\n', JSON.stringify(item.relatedProfiles || item.related_profiles || [], null, 2));
-      console.log('LATEST POSTS:\n', JSON.stringify(item.latestPosts || item.latest_posts || [], null, 2));
-
       // VALIDAÇÃO ABSOLUTA: requested === returned
       const returned = normalizeUsername(item.username);
       if (requested !== returned) {
         console.error(`[ApifyInstagramProvider] PROFILE_MISMATCH - requested: "${requested}", returned: "${returned}"`);
         throw new Error('PROFILE_MISMATCH');
       }
+
+      console.log('--- RAW APIFY relatedProfiles ---');
+      console.log(JSON.stringify(item.relatedProfiles, null, 2));
+      console.log('--- RAW APIFY related_profiles ---');
+      console.log(JSON.stringify(item.related_profiles, null, 2));
 
       // NORMALIZAÇÃO ESTRITA: Campo ausente é null, sem inventar dados
       const normalized: InstagramProfileData = normalizeApifyProfile(item);

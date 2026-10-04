@@ -2,80 +2,147 @@ import React, { useState, useEffect } from 'react';
 
 interface AnimatedMaskedFieldProps {
   isComplete: boolean;
+  onSimulationComplete?: () => void;
+  onErrorStateChange?: (show: boolean) => void;
 }
 
-const TYPING_ATTEMPTS = [
-  '******91',
-  '*****a7*',
-  '*******#38',
-  '********82*',
-  '******x91',
-  '********74*',
-  '*******@92',
-  '*********35*',
-  '********b80',
+// 12 to 14 seconds total simulation time
+const MIN_SIMULATION_TIME = 12000;
+
+// Simulated fake targets
+const FAKE_TARGETS = [
+  '********a7',
+  '**********0',
+  '*******e2',
+  '*********c',
+  '******9x',
+  '********4k',
+  '*******b80',
+  '**********5',
+  '********z1',
+  '*******p93',
+  '*********m1',
   '••••••••••',
 ];
 
-export const AnimatedMaskedField: React.FC<AnimatedMaskedFieldProps> = ({ isComplete }) => {
-  const [text, setText] = useState('****');
+const randomBetween = (min: number, max: number): number => {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+export const AnimatedMaskedField: React.FC<AnimatedMaskedFieldProps> = ({
+  isComplete,
+  onSimulationComplete,
+  onErrorStateChange,
+}) => {
+  const [displayedText, setDisplayedText] = useState<string>('');
 
   useEffect(() => {
     if (isComplete) {
-      setText('••••••••••');
+      setDisplayedText('••••••••••');
+      onErrorStateChange?.(false);
       return;
     }
 
     let isCancelled = false;
-    let attemptIdx = 0;
-    let currentStr = '****';
 
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve();
+        }, ms);
+        if (isCancelled) clearTimeout(timer);
+      });
 
-    const runTypingLoop = async () => {
-      while (!isCancelled && attemptIdx < TYPING_ATTEMPTS.length - 1) {
-        const target = TYPING_ATTEMPTS[attemptIdx];
+    const runSimulationLoop = async () => {
+      const startTime = Date.now();
+      let attemptIndex = 0;
 
-        // 1. Backspace down to a common prefix (e.g. 3-4 chars)
-        while (!isCancelled && currentStr.length > 3) {
-          currentStr = currentStr.slice(0, -1);
-          setText(currentStr);
-          await sleep(50 + Math.random() * 40);
+      // Loop attempts while total elapsed time is less than MIN_SIMULATION_TIME (12s)
+      while (!isCancelled && Date.now() - startTime < MIN_SIMULATION_TIME) {
+        const target = FAKE_TARGETS[attemptIndex % (FAKE_TARGETS.length - 1)];
+        let current = '';
+
+        // A) Starts typing -> Error message is HIDDEN
+        onErrorStateChange?.(false);
+
+        // 1. Type character by character (40ms to 90ms per char)
+        for (let i = 0; i < target.length; i++) {
+          if (isCancelled) return;
+          current += target[i];
+          setDisplayedText(current);
+          await sleep(randomBetween(40, 90));
         }
 
-        await sleep(140);
+        // B) Finishes typing -> Validation pause (150ms to 300ms)
+        if (isCancelled) return;
+        await sleep(randomBetween(150, 300));
 
-        // 2. Type target character by character
-        for (let i = currentStr.length; i < target.length; i++) {
-          if (isCancelled) break;
-          currentStr += target[i];
-          setText(currentStr);
-          await sleep(70 + Math.random() * 60);
+        // C) Show error message ("A senha que você inseriu está incorreta.")
+        if (isCancelled) return;
+        onErrorStateChange?.(true);
+
+        // D) Keep message visible for 300ms to 550ms
+        await sleep(randomBetween(300, 550));
+
+        // E) Hide message before erasing
+        if (isCancelled) return;
+        onErrorStateChange?.(false);
+
+        // F) Erase character by character (25ms to 60ms per char)
+        while (current.length > 0) {
+          if (isCancelled) return;
+          current = current.slice(0, -1);
+          setDisplayedText(current);
+          await sleep(randomBetween(25, 60));
         }
 
-        // 3. Pause at completed attempt (700ms to 1000ms)
-        await sleep(750 + Math.random() * 200);
+        // G) Pause on empty field before next attempt (80ms to 180ms)
+        if (isCancelled) return;
+        await sleep(randomBetween(80, 180));
 
-        attemptIdx++;
+        attemptIndex++;
+      }
+
+      // FINAL ATTEMPT (executed strictly after 12+ seconds elapsed)
+      if (isCancelled) return;
+      onErrorStateChange?.(false); // Never show error message on final attempt
+
+      const finalTarget = '••••••••••';
+      let finalCurrent = '';
+
+      for (let i = 0; i < finalTarget.length; i++) {
+        if (isCancelled) return;
+        finalCurrent += finalTarget[i];
+        setDisplayedText(finalCurrent);
+        await sleep(randomBetween(40, 80));
+      }
+
+      // Small final validation pause before success
+      if (isCancelled) return;
+      await sleep(randomBetween(150, 300));
+
+      // Keep final masked password frozen and trigger success
+      if (!isCancelled && onSimulationComplete) {
+        onSimulationComplete();
       }
     };
 
-    runTypingLoop();
+    runSimulationLoop();
 
     return () => {
       isCancelled = true;
+      onErrorStateChange?.(false);
     };
-  }, [isComplete]);
+  }, [isComplete, onSimulationComplete, onErrorStateChange]);
 
   return (
     <div
       tabIndex={-1}
       className="w-full h-[48px] bg-[#0F141A] border border-[#232C36] rounded-[4px] px-3 font-mono text-[14px] flex items-center select-none pointer-events-none transition-colors"
     >
-      <span className="tracking-widest font-semibold text-white/80 select-none">
-        {isComplete ? '••••••••••' : text}
+      <span className="tracking-wider font-medium text-white/90 select-none min-h-[20px] flex items-center">
+        {displayedText}
       </span>
-      {/* NO BADGE/LABEL ON RIGHT SIDE AT ALL */}
     </div>
   );
 };

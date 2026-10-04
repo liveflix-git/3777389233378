@@ -6,9 +6,15 @@ import {
   type InstagramProfileResult, 
   type InstagramProfileProvider,
   type RelatedProfileItem,
+  type RelatedInstagramProfile,
   type LatestPostItem,
   type DataOrigin
 } from './providers/apifyInstagramProvider.js';
+import { 
+  yepSimilarProfilesProvider,
+  type PublicPreviewMediaResult 
+} from './providers/yepSimilarProfilesProvider.js';
+import { relationCache } from './relationCache.js';
 
 export { 
   normalizeUsername,
@@ -17,8 +23,10 @@ export {
   type InstagramProfileResult, 
   type InstagramProfileProvider,
   type RelatedProfileItem,
+  type RelatedInstagramProfile,
   type LatestPostItem,
-  type DataOrigin
+  type DataOrigin,
+  type PublicPreviewMediaResult
 };
 
 export const normalizeInstagramUsername = normalizeUsername;
@@ -29,8 +37,7 @@ export interface CachedImage {
   timestamp: number;
 }
 
-// In-memory cache strictly under:
-// instagram_profile:{normalizedUsername}
+// In-memory cache strictly under instagram_profile:{normalizedUsername}
 // TTL: 15 minutes
 const PROFILE_CACHE_TTL = 15 * 60 * 1000;
 const IMAGE_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours
@@ -38,8 +45,50 @@ const IMAGE_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours
 const profileCache = new Map<string, { data: InstagramProfileData; timestamp: number }>();
 const imageCache = new Map<string, CachedImage>();
 
-// Primary Provider: danek/instagram-profiles-scraper-ppr via Apify
+// Primary Provider: apify/instagram-profile-scraper
 const apifyProvider: InstagramProfileProvider = new ApifyInstagramProvider();
+
+/**
+ * Merges and prioritizes related profiles:
+ * 1. Real relatedProfiles from Apify (confidence: 1.0)
+ * 2. Real similar profiles from YepAPI (confidence: 0.9)
+ * Strictly deduplicated and limited to 12.
+ */
+export function mergeRelatedProfiles(
+  targetUsername: string,
+  apifyList: RelatedInstagramProfile[] = [],
+  yepList: RelatedInstagramProfile[] = []
+): RelatedInstagramProfile[] {
+  const normTarget = normalizeUsername(targetUsername);
+  const seen = new Set<string>();
+  if (normTarget) seen.add(normTarget);
+
+  const merged: RelatedInstagramProfile[] = [];
+
+  // Priority 1: Real Apify direct related profiles
+  for (const p of apifyList) {
+    if (!p || !p.username) continue;
+    const u = normalizeUsername(p.username);
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    merged.push(p);
+    if (merged.length >= 12) return merged;
+  }
+
+  // Priority 2: Real YepAPI similar profiles
+  for (const p of yepList) {
+    if (!p || !p.username) continue;
+    const u = normalizeUsername(p.username);
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    merged.push(p);
+    if (merged.length >= 12) return merged;
+  }
+
+  return merged;
+}
+
+export const mergeRelatedCandidates = mergeRelatedProfiles;
 
 /**
  * Downloads and caches the real profile picture bytes from Instagram / CDN
@@ -117,11 +166,16 @@ export function getCachedProfile(username: string): InstagramProfileData | null 
 /**
  * Main resolution function:
  * 1. Checks cache instagram_profile:{normalizedUsername}
- * 2. Consults Apify actor danek/instagram-profiles-scraper-ppr
+ * 2. Consults Apify provider (primary profile data)
  * 3. Enforces strict exact username match
- * 4. Proxies image if available
+ * 4. If relatedProfiles.length < 7, calls YepAPI (similar profiles provider)
+ * 5. Merges Apify + YepAPI (max 12), saves strictly isolated cache
+ * 6. Proxies image if available
  */
-export async function resolveInstagramProfile(input: string): Promise<InstagramProfileResult> {
+export async function resolveInstagramProfile(
+  input: string,
+  yepApiKeyOverride?: string
+): Promise<InstagramProfileResult> {
   const requested = normalizeUsername(input);
 
   if (!requested || requested.length < 2) {
@@ -136,32 +190,95 @@ export async function resolveInstagramProfile(input: string): Promise<InstagramP
 
   if (cached && Date.now() - cached.timestamp < PROFILE_CACHE_TTL) {
     console.log(`[InstagramLookup] Cache hit para: instagram_profile:${requested}`);
+    const data = { ...cached.data };
+    if (data.profilePicture && data.profilePicture.startsWith('http')) {
+      data.profilePicture = `/api/instagram/profile-image?url=${encodeURIComponent(data.profilePicture)}`;
+    }
     return {
       status: 'SUCCESS',
-      data: cached.data,
+      data,
     };
   }
 
-  // Real Apify provider execution
+  // 1. Apify primary lookup
   const result = await apifyProvider.getProfile(requested);
 
   if (result.status === 'SUCCESS') {
     const data = result.data;
     const returned = normalizeUsername(data.username);
 
-    // VALIDAÇÃO ABSOLUTA
+    // Strict validation
     if (requested !== returned) {
       console.error(`[InstagramLookup] PROFILE_MISMATCH - requested: ${requested}, returned: ${returned}`);
       throw new Error('PROFILE_MISMATCH');
     }
 
-    // Se houver URL da foto real, pré-carrega no cache para disponibilizar na rota /api/instagram/profile-image
-    if (data.profilePicture) {
-      // Async pre-fetch into memory buffer
-      fetchAndCacheProfileImage(requested, data.profilePicture).catch(() => {});
+    const apifyRelated = Array.isArray(data.relatedProfiles) ? data.relatedProfiles : [];
+
+    // Save Apify related profiles in cache
+    if (apifyRelated.length > 0) {
+      relationCache.recordApifyRelations(requested, apifyRelated);
     }
 
-    // Salva no cache com chave estrita instagram_profile:{normalizedUsername}
+    let resolvedRelated: RelatedInstagramProfile[] = apifyRelated;
+
+    // 2. If Apify relatedProfiles < 7, call YepAPI as similar profiles provider
+    if (apifyRelated.length < 7) {
+      console.log(`[YepAPI] Apify retornou ${apifyRelated.length} relacionados para @${requested}. Chamando YepAPI...`);
+      try {
+        const yepSimilar = await yepSimilarProfilesProvider.fetchYepSimilarProfiles(requested, yepApiKeyOverride);
+        if (yepSimilar.length > 0) {
+          relationCache.recordYepRelations(requested, yepSimilar);
+          resolvedRelated = mergeRelatedProfiles(requested, apifyRelated, yepSimilar);
+          console.log(`[YepAPI] Consolidado: ${resolvedRelated.length} perfis para @${requested}.`);
+        } else {
+          // Fallback to cache for this specific user
+          const cachedForUser = relationCache.getRelationsForUser(requested);
+          resolvedRelated = mergeRelatedProfiles(requested, apifyRelated, cachedForUser);
+        }
+      } catch (yepErr) {
+        console.warn(`[YepAPI] Falha ao consultar YepAPI para @${requested}:`, yepErr);
+        const cachedForUser = relationCache.getRelationsForUser(requested);
+        resolvedRelated = mergeRelatedProfiles(requested, apifyRelated, cachedForUser);
+      }
+    } else {
+      resolvedRelated = mergeRelatedProfiles(requested, apifyRelated, []);
+    }
+
+    data.relatedProfiles = resolvedRelated;
+
+    // Optional: Fetch up to 2 public preview media images from public related profiles (MAX_PUBLIC_MEDIA_LOOKUPS = 2)
+    const publicRelated = resolvedRelated.filter(p => !p.isPrivate);
+    const mediaLookups = publicRelated.slice(0, 2);
+    if (mediaLookups.length > 0 && (process.env.YEP_API_KEY || yepApiKeyOverride)) {
+      try {
+        const mediaPromises = mediaLookups.map(p =>
+          yepSimilarProfilesProvider.fetchPublicPreviewMedia(p.username, yepApiKeyOverride)
+        );
+        const mediaResults = (await Promise.allSettled(mediaPromises))
+          .filter((r): r is PromiseFulfilledResult<PublicPreviewMediaResult | null> => r.status === 'fulfilled' && Boolean(r.value))
+          .map(r => r.value!);
+
+        if (mediaResults.length > 0) {
+          (data as any).publicPreviewMedia = mediaResults;
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    // Pre-cache profile picture if available
+    if (data.profilePicture) {
+      const remoteUrl = data.profilePicture.startsWith('/api/instagram/') 
+        ? null 
+        : data.profilePicture;
+      if (remoteUrl) {
+        fetchAndCacheProfileImage(requested, remoteUrl).catch(() => {});
+        data.profilePicture = `/api/instagram/profile-image?url=${encodeURIComponent(remoteUrl)}`;
+      }
+    }
+
+    // Save strictly under instagram_profile:{normalizedUsername}
     profileCache.set(cacheKey, {
       data,
       timestamp: Date.now(),

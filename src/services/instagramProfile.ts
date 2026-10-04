@@ -1,13 +1,17 @@
 export type DataOrigin = 'provider' | 'placeholder' | 'ui-preview';
 
-export interface RelatedProfileItem {
-  origin: 'provider';
+export interface RelatedInstagramProfile {
+  id?: string;
   username: string;
-  fullName: string | null;
-  profilePicture: string | null;
-  isVerified: boolean | null;
-  isPrivate: boolean | null;
+  fullName?: string;
+  isVerified?: boolean;
+  isPrivate?: boolean;
+  profilePicture?: string;
 }
+
+export type RelatedProfileItem = RelatedInstagramProfile & {
+  origin?: 'provider';
+};
 
 export interface LatestPostItem {
   origin: 'provider';
@@ -32,7 +36,7 @@ export interface InstagramProfileData {
   posts: number | null;
   isPrivate: boolean | null;
   isVerified: boolean | null;
-  relatedProfiles?: RelatedProfileItem[] | null;
+  relatedProfiles?: RelatedInstagramProfile[] | null;
   latestPosts?: LatestPostItem[] | null;
 }
 
@@ -61,9 +65,6 @@ export function normalizeUsername(input: string): string {
 
 export const normalizeInstagramUsername = normalizeUsername;
 
-const profileMemoryCache = new Map<string, { data: InstagramProfileData; expiresAt: number }>();
-const inFlightProfileRequests = new Map<string, Promise<InstagramProfileData>>();
-
 export async function fetchInstagramProfile(rawInput: string): Promise<InstagramProfileData> {
   const requested = normalizeUsername(rawInput);
 
@@ -71,75 +72,50 @@ export async function fetchInstagramProfile(rawInput: string): Promise<Instagram
     throw new Error('Digite um nome de usuário válido.');
   }
 
-  // 1. Check in-memory cache (valid for 5 minutes)
-  const cached = profileMemoryCache.get(requested);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.data;
-  }
-
-  // 2. Prevent duplicate concurrent requests for same username
-  const existingRequest = inFlightProfileRequests.get(requested);
-  if (existingRequest) {
-    return existingRequest;
-  }
-
   const endpoint = `/api/instagram/profile?username=${encodeURIComponent(requested)}`;
 
-  const requestPromise = (async () => {
-    try {
-      const res = await fetch(endpoint);
-      const contentType = res.headers.get('content-type') || '';
+  try {
+    const res = await fetch(endpoint);
+    const contentType = res.headers.get('content-type') || '';
 
-      if (contentType.includes('application/json')) {
-        const result = (await res.json()) as any;
+    if (contentType.includes('application/json')) {
+      const result = (await res.json()) as any;
 
-        if (res.status === 404 || result.status === 'NOT_FOUND') {
-          throw new Error('Não foi possível localizar esse perfil. Confira o @ e tente novamente.');
-        }
-
-        if (result.status === 'UNAVAILABLE') {
-          if (result.reason === 'APIFY_TOKEN_NOT_CONFIGURED') {
-            throw new Error('É necessário configurar a variável APIFY_API_TOKEN na Cloudflare.');
-          }
-          throw new Error(result.message || result.reason || 'Serviço de consulta indisponível no momento.');
-        }
-
-        if (res.ok && result.status === 'SUCCESS' && result.data) {
-          const data: InstagramProfileData = result.data;
-
-          // Strict validation: requestedUsername === returnedUsername
-          const returned = normalizeUsername(data.username);
-          if (requested !== returned) {
-            console.error(`[InstagramLookup] PROFILE_MISMATCH - requested: ${requested}, returned: ${returned}`);
-            throw new Error('PROFILE_MISMATCH');
-          }
-
-          // Cache for 5 minutes
-          profileMemoryCache.set(requested, {
-            data,
-            expiresAt: Date.now() + 5 * 60 * 1000,
-          });
-
-          return data;
-        }
+      if (res.status === 404 || result.status === 'NOT_FOUND') {
+        throw new Error('Não foi possível localizar esse perfil. Confira o @ e tente novamente.');
       }
 
-      throw new Error('Não foi possível carregar os dados deste perfil no momento.');
-    } catch (err: any) {
-      if (
-        err instanceof Error &&
-        (err.message.includes('Não foi possível') ||
-          err.message === 'PROFILE_MISMATCH' ||
-          err.message.includes('APIFY_API_TOKEN'))
-      ) {
-        throw err;
+      if (result.status === 'UNAVAILABLE') {
+        if (result.reason === 'APIFY_TOKEN_NOT_CONFIGURED') {
+          throw new Error('É necessário configurar a variável APIFY_API_TOKEN na Cloudflare.');
+        }
+        throw new Error(result.message || result.reason || 'Serviço de consulta indisponível no momento.');
       }
-      throw new Error(err.message || 'Erro ao conectar com o serviço de busca.');
+
+      if (res.ok && result.status === 'SUCCESS' && result.data) {
+        const data: InstagramProfileData = result.data;
+
+        // Strict validation: requestedUsername === returnedUsername
+        const returned = normalizeUsername(data.username);
+        if (requested !== returned) {
+          console.error(`[InstagramLookup] PROFILE_MISMATCH - requested: ${requested}, returned: ${returned}`);
+          throw new Error('PROFILE_MISMATCH');
+        }
+
+        return data;
+      }
     }
-  })().finally(() => {
-    inFlightProfileRequests.delete(requested);
-  });
 
-  inFlightProfileRequests.set(requested, requestPromise);
-  return requestPromise;
+    throw new Error('Não foi possível carregar os dados deste perfil no momento.');
+  } catch (err: any) {
+    if (
+      err instanceof Error &&
+      (err.message.includes('Não foi possível') ||
+        err.message === 'PROFILE_MISMATCH' ||
+        err.message.includes('APIFY_API_TOKEN'))
+    ) {
+      throw err;
+    }
+    throw new Error(err.message || 'Erro ao conectar com o serviço de busca.');
+  }
 }

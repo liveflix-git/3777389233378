@@ -17,7 +17,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   if (!isOpen) return null;
 
-  const price = planName.includes('VIP') ? '49,90' : '29,90';
+  const price = planName.includes('VIP') ? '49,90' : '34,79';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-xl animate-fadeIn">
@@ -70,83 +70,96 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </button>
             </div>
 
+            {/* Pix Instructions */}
             {method === 'pix' ? (
-              <div className="p-4 rounded-2xl bg-[#050507] border border-[rgba(139,92,246,0.2)] text-center space-y-3">
-                <div className="w-36 h-36 mx-auto bg-white p-2 rounded-xl flex items-center justify-center">
-                  {/* Visual QR representation */}
-                  <div className="w-full h-full border-2 border-dashed border-black/30 rounded flex flex-col items-center justify-center text-neutral-900 text-[10px] font-mono-tech p-1">
-                    <QrCode className="w-16 h-16 text-black mb-1" />
-                    <span>PIX COPIA E COLA</span>
+              <div className="space-y-4 bg-[#050507] p-4 rounded-2xl border border-[rgba(139,92,246,0.12)]">
+                <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
+                  <Zap className="w-4 h-4 shrink-0" />
+                  <span>Acesso liberado automaticamente em menos de 10s após o PIX.</span>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl flex items-center justify-center max-w-[160px] mx-auto shadow-inner">
+                  <div className="w-32 h-32 bg-slate-900 rounded-lg flex flex-col items-center justify-center text-center p-2">
+                    <QrCode className="w-16 h-16 text-white mb-1" />
+                    <span className="text-[9px] text-[#9CA3AF] font-mono-tech">QR Code Demo</span>
                   </div>
                 </div>
-                <p className="text-xs text-[#9CA3AF]">
-                  Escaneie o QR Code acima ou clique no botão abaixo para simular a liberação instantânea do dossiê.
-                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setIsSuccess(true)}
+                  className="w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+                >
+                  <span>Simular Pagamento PIX</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
             ) : (
-              <div className="space-y-3 text-xs">
-                <input
-                  type="text"
-                  placeholder="Número do Cartão (0000 0000 0000 0000)"
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#050507] border border-[rgba(139,92,246,0.25)] text-white placeholder-neutral-500 focus:outline-none focus:border-[#8B5CF6]"
-                />
-                <div className="grid grid-cols-2 gap-2">
+              /* Card Form */
+              <div className="space-y-3 bg-[#050507] p-4 rounded-2xl border border-[rgba(139,92,246,0.12)]">
+                <div>
+                  <label className="text-[11px] font-medium text-[#9CA3AF] block mb-1">Número do Cartão</label>
                   <input
                     type="text"
-                    placeholder="Validade (MM/AA)"
-                    className="w-full px-3.5 py-3 rounded-xl bg-[#050507] border border-[rgba(139,92,246,0.25)] text-white placeholder-neutral-500 focus:outline-none focus:border-[#8B5CF6]"
-                  />
-                  <input
-                    type="text"
-                    placeholder="CVV"
-                    className="w-full px-3.5 py-3 rounded-xl bg-[#050507] border border-[rgba(139,92,246,0.25)] text-white placeholder-neutral-500 focus:outline-none focus:border-[#8B5CF6]"
+                    placeholder="0000 0000 0000 0000"
+                    className="w-full bg-[#0B0B10] border border-[rgba(139,92,246,0.2)] rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#8B5CF6]"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-medium text-[#9CA3AF] block mb-1">Validade</label>
+                    <input
+                      type="text"
+                      placeholder="MM/AA"
+                      className="w-full bg-[#0B0B10] border border-[rgba(139,92,246,0.2)] rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#8B5CF6]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-[#9CA3AF] block mb-1">CVV</label>
+                    <input
+                      type="text"
+                      placeholder="123"
+                      className="w-full bg-[#0B0B10] border border-[rgba(139,92,246,0.2)] rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#8B5CF6]"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsSuccess(true)}
+                  className="w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.4)] mt-2"
+                >
+                  <span>Pagar R$ {price}</span>
+                  <Lock className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
 
-            <button
-              onClick={() => setIsSuccess(true)}
-              className="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] hover:brightness-110 transition-all shadow-[0_0_20px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2"
-            >
-              <span>Confirmar e Liberar Relatório</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center justify-center gap-4 text-[11px] text-[#9CA3AF]">
-              <span className="flex items-center gap-1">
-                <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                Criptografia 256-bit
-              </span>
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Garantia 7 Dias
-              </span>
+            <div className="flex items-center justify-center gap-2 text-[11px] text-[#9CA3AF]">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Transação criptografada de ponta a ponta</span>
             </div>
           </div>
         ) : (
           <div className="text-center py-6 space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500 text-emerald-400 mx-auto flex items-center justify-center">
-              <CheckCircle2 className="w-8 h-8" />
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/40">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
-            <h3 className="text-xl font-bold font-display text-white">
-              Acesso Liberado com Sucesso!
-            </h3>
-            <p className="text-xs text-[#9CA3AF] max-w-xs mx-auto">
-              Seu acesso privilegiado ao sistema Stalkeia App foi ativado. As consultas agora são ilimitadas e 100% confidenciais.
-            </p>
+            <div>
+              <h3 className="text-xl font-bold text-white font-display">Acesso Liberado!</h3>
+              <p className="text-xs text-[#9CA3AF] mt-1">
+                Seu relatório e dossiê do perfil foram descriptografados.
+              </p>
+            </div>
             <button
-              onClick={() => {
-                setIsSuccess(false);
-                onClose();
-              }}
-              className="w-full py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-[#8B5CF6] hover:bg-[#7C3AED] transition-colors"
+              type="button"
+              onClick={onClose}
+              className="w-full py-3 rounded-xl bg-[#8B5CF6] font-bold text-xs uppercase tracking-wider text-white hover:brightness-110 transition-all"
             >
-              Acessar Painel Investigativo
+              Visualizar Dossiê Agora
             </button>
           </div>
         )}
-
       </div>
     </div>
   );

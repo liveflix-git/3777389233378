@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { MatrixBackground } from '../components/MatrixBackground';
 import { getDashboardUser, fetchCurrentUserApi, type DashboardUser } from '../services/espiaSession';
+import { trackStandardMetaEvent } from '../utils/metaPixel';
 
 interface CreditPackage {
   id: string;
@@ -108,6 +109,11 @@ export const CreditsPage: React.FC = () => {
 
   const handleBuyClick = (pkg: CreditPackage) => {
     if (pkg.checkoutUrl) {
+      trackStandardMetaEvent('InitiateCheckout', {
+        path: '/creditos',
+        package_name: pkg.name,
+        funnel_version: 'current',
+      });
       window.location.href = pkg.checkoutUrl;
     } else {
       setSelectedPackage(pkg);

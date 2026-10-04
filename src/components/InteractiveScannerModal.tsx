@@ -124,6 +124,7 @@ export const InteractiveScannerModal: React.FC<InteractiveScannerModalProps> = (
     }
 
     setErrorMessage('');
+    setFoundProfile(null);
     setIsSearching(true);
 
     const requested = normalizeUsername(handle);

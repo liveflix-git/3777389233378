@@ -16,6 +16,7 @@ import {
 import { CheckoutModal } from '../components/CheckoutModal';
 import { getEspiaProfile, getActiveAnalysisApi } from '../services/espiaSession';
 import { MatrixBackground } from '../components/MatrixBackground';
+import { trackStandardMetaEvent } from '../utils/metaPixel';
 
 function resolveInitialProfile(): { username: string; displayName: string; avatar: string } {
   const defaultAvatar =
@@ -108,6 +109,10 @@ export const AntiAlertPage: React.FC = () => {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   const handleGoToCheckout = () => {
+    trackStandardMetaEvent('InitiateCheckout', {
+      path: '/back-redirect',
+      funnel_version: 'current',
+    });
     window.location.href = 'https://checkout.perfectpay.com.br/pay/PPU38CQGK8M?';
   };
 

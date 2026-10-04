@@ -52,7 +52,7 @@ const apifyProvider: InstagramProfileProvider = new ApifyInstagramProvider();
  * Merges and prioritizes related profiles:
  * 1. Real relatedProfiles from Apify (confidence: 1.0)
  * 2. Real similar profiles from YepAPI (confidence: 0.9)
- * Strictly deduplicated and limited to 12.
+ * Strictly deduplicated, excludes target username, and limited to 12.
  */
 export function mergeRelatedProfiles(
   targetUsername: string,
@@ -168,7 +168,7 @@ export function getCachedProfile(username: string): InstagramProfileData | null 
  * 1. Checks cache instagram_profile:{normalizedUsername}
  * 2. Consults Apify provider (primary profile data)
  * 3. Enforces strict exact username match
- * 4. If relatedProfiles.length < 7, calls YepAPI (similar profiles provider)
+ * 4. If relatedProfiles.length < 7, calls YepAPI dynamically with current requested username
  * 5. Merges Apify + YepAPI (max 12), saves strictly isolated cache
  * 6. Proxies image if available
  */
@@ -215,29 +215,31 @@ export async function resolveInstagramProfile(
 
     const apifyRelated = Array.isArray(data.relatedProfiles) ? data.relatedProfiles : [];
 
-    // Save Apify related profiles in cache
+    // Save Apify related profiles in cache strictly for this seed_username
     if (apifyRelated.length > 0) {
       relationCache.recordApifyRelations(requested, apifyRelated);
     }
 
     let resolvedRelated: RelatedInstagramProfile[] = apifyRelated;
+    let yepCount = 0;
+    let yepRequestUsername: string | null = null;
 
-    // 2. If Apify relatedProfiles < 7, call YepAPI as similar profiles provider
+    // 2. If Apify relatedProfiles < 7, call YepAPI dynamically with current username
     if (apifyRelated.length < 7) {
-      console.log(`[YepAPI] Apify retornou ${apifyRelated.length} relacionados para @${requested}. Chamando YepAPI...`);
+      yepRequestUsername = requested;
       try {
         const yepSimilar = await yepSimilarProfilesProvider.fetchYepSimilarProfiles(requested, yepApiKeyOverride);
+        yepCount = yepSimilar.length;
         if (yepSimilar.length > 0) {
           relationCache.recordYepRelations(requested, yepSimilar);
           resolvedRelated = mergeRelatedProfiles(requested, apifyRelated, yepSimilar);
-          console.log(`[YepAPI] Consolidado: ${resolvedRelated.length} perfis para @${requested}.`);
         } else {
-          // Fallback to cache for this specific user
+          // Fallback to cache strictly for this seed_username
           const cachedForUser = relationCache.getRelationsForUser(requested);
           resolvedRelated = mergeRelatedProfiles(requested, apifyRelated, cachedForUser);
         }
       } catch (yepErr) {
-        console.warn(`[YepAPI] Falha ao consultar YepAPI para @${requested}:`, yepErr);
+        console.warn(`[YepAPI] Error querying YepAPI for @${requested}:`, yepErr);
         const cachedForUser = relationCache.getRelationsForUser(requested);
         resolvedRelated = mergeRelatedProfiles(requested, apifyRelated, cachedForUser);
       }
@@ -247,10 +249,19 @@ export async function resolveInstagramProfile(
 
     data.relatedProfiles = resolvedRelated;
 
+    // Structured logging for debugging
+    console.log(`[RELATED DEBUG]
+searchedUsername: ${requested}
+apifyCount: ${apifyRelated.length}
+yepRequestUsername: ${yepRequestUsername ?? 'NOT_CALLED (Apify >= 7)'}
+yepCount: ${yepCount}
+mergedCount: ${resolvedRelated.length}
+firstFiveUsernames: ${JSON.stringify(resolvedRelated.slice(0, 5).map(p => p.username))}`);
+
     // Optional: Fetch up to 2 public preview media images from public related profiles (MAX_PUBLIC_MEDIA_LOOKUPS = 2)
     const publicRelated = resolvedRelated.filter(p => !p.isPrivate);
     const mediaLookups = publicRelated.slice(0, 2);
-    if (mediaLookups.length > 0 && (process.env.YEP_API_KEY || yepApiKeyOverride)) {
+    if (mediaLookups.length > 0) {
       try {
         const mediaPromises = mediaLookups.map(p =>
           yepSimilarProfilesProvider.fetchPublicPreviewMedia(p.username, yepApiKeyOverride)

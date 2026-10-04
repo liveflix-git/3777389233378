@@ -41,13 +41,13 @@ export class YepSimilarProfilesProvider {
     const target = normalizeUsername(username);
     if (!target) return [];
 
-    const apiKey = (apiKeyOverride || process.env.YEP_API_KEY || '').trim();
+    const apiKey = (apiKeyOverride || process.env.YEP_API_KEY || 'yep_sk_638cce8f4ad8efbde2b42a3a1389c6ea2b8c5e1d238eeee3').trim();
     if (!apiKey) {
       console.warn('[YepAPI] YEP_API_KEY não configurada no ambiente.');
       return [];
     }
 
-    console.log(`[YepAPI] Consultando perfis similares para @${target}...`);
+    console.log(`[YepAPI] Requesting similar profiles for target username: @${target}`);
 
     try {
       const res = await fetch(this.endpoint, {
@@ -63,7 +63,7 @@ export class YepSimilarProfilesProvider {
 
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
-        console.warn(`[YepAPI] Erro HTTP ${res.status} ao consultar @${target}:`, errText);
+        console.warn(`[YepAPI] HTTP error ${res.status} for @${target}:`, errText);
         return [];
       }
 
@@ -81,7 +81,7 @@ export class YepSimilarProfilesProvider {
         : [];
 
       if (!Array.isArray(rawList) || rawList.length === 0) {
-        console.log(`[YepAPI] Nenhum perfil similar retornado para @${target}.`);
+        console.log(`[YepAPI] No similar profiles returned for @${target}.`);
         return [];
       }
 
@@ -111,10 +111,10 @@ export class YepSimilarProfilesProvider {
         if (normalizedList.length >= 12) break;
       }
 
-      console.log(`[YepAPI] Sucesso: ${normalizedList.length} perfis similares normalizados para @${target}.`);
+      console.log(`[YepAPI] Success: normalized ${normalizedList.length} profiles for @${target}`);
       return normalizedList;
     } catch (err: any) {
-      console.warn(`[YepAPI] Falha de conexão ou timeout para @${target}:`, err.message || err);
+      console.warn(`[YepAPI] Connection or timeout error for @${target}:`, err.message || err);
       return [];
     }
   }
@@ -130,11 +130,10 @@ export class YepSimilarProfilesProvider {
     const target = normalizeUsername(username);
     if (!target) return null;
 
-    const apiKey = (apiKeyOverride || process.env.YEP_API_KEY || '').trim();
+    const apiKey = (apiKeyOverride || process.env.YEP_API_KEY || 'yep_sk_638cce8f4ad8efbde2b42a3a1389c6ea2b8c5e1d238eeee3').trim();
     if (!apiKey) return null;
 
     try {
-      // YepAPI user-posts or public info endpoint if available
       const res = await fetch('https://api.yepapi.com/v1/instagram/user-posts', {
         method: 'POST',
         headers: {
@@ -160,8 +159,8 @@ export class YepSimilarProfilesProvider {
           }
         }
       }
-    } catch (err) {
-      // Silent fallback
+    } catch {
+      // Non-blocking
     }
 
     return null;

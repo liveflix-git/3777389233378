@@ -7,6 +7,7 @@ export interface ConversationData {
   handle: string;
   previewMessage: string;
   timestamp: string;
+  isLocked?: boolean;
   hasUnread?: boolean;
 }
 
@@ -31,40 +32,45 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   return (
     <div
       onClick={onClick}
-      data-origin="ui-preview"
-      className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors cursor-pointer select-none"
+      className="w-full min-h-[72px] flex items-center justify-between gap-[12px] px-4 py-[9px] hover:bg-white/[0.03] active:bg-white/[0.06] transition-colors cursor-pointer select-none"
     >
-      {/* Left Avatar */}
-      <div className="relative shrink-0 w-[52px] h-[52px] rounded-full overflow-hidden bg-slate-800 border border-white/10 flex items-center justify-center">
+      {/* Left Avatar (54px) */}
+      <div className="relative shrink-0 w-[54px] h-[54px] rounded-full overflow-hidden bg-[#181D26] border border-white/10 flex items-center justify-center">
         {!imgErr && finalSrc ? (
           <img
             src={finalSrc}
             alt={conversation.handle}
             onError={() => setImgErr(true)}
-            className="w-full h-full object-cover filter blur-[4px] scale-110"
+            className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-400">
+          <div className="w-full h-full bg-[#181D26] flex items-center justify-center text-[#737373]">
             <User className="w-6 h-6" />
           </div>
+        )}
+
+        {/* Small unread blue dot */}
+        {conversation.hasUnread && (
+          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-[#3797F0] border-2 border-[#000000]" />
         )}
       </div>
 
       {/* Middle Text: Handle & Last Message Preview */}
       <div className="flex-1 min-w-0 text-left">
-        <h4 className="text-[14px] font-bold text-white tracking-tight leading-tight font-mono">
+        <h4 className="text-[14px] sm:text-[15px] font-semibold text-[#F5F5F5] leading-tight truncate">
           {conversation.handle}
         </h4>
-        <p className="text-[13px] text-[#A0A6B2] font-normal leading-tight mt-1 truncate">
-          <span>{conversation.previewMessage}</span>
-          <span className="mx-1">•</span>
-          <span>{conversation.timestamp}</span>
+        <p className="text-[13px] text-[#A8A8A8] font-normal leading-tight mt-1 truncate">
+          <span className={conversation.hasUnread ? 'text-white font-semibold' : 'text-[#A8A8A8]'}>
+            {conversation.previewMessage}
+          </span>
+          <span className="text-[#737373] ml-1">· {conversation.timestamp}</span>
         </p>
       </div>
 
-      {/* Right Camera Icon */}
-      <div className="shrink-0 text-[#8E95A2] hover:text-white transition-colors p-1">
-        <Camera className="w-5 h-5 stroke-[1.8]" />
+      {/* Right Camera Icon (Instagram style, 23px, stroke #A8A8A8) */}
+      <div className="shrink-0 text-[#A8A8A8] hover:text-white transition-colors p-1">
+        <Camera className="w-[23px] h-[23px] stroke-[1.8]" />
       </div>
     </div>
   );

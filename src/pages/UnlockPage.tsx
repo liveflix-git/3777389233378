@@ -15,6 +15,7 @@ import { FAQAccordion } from '../components/unlock/FAQAccordion';
 import { GuaranteeCard } from '../components/unlock/GuaranteeCard';
 import { StickyPurchaseBar } from '../components/unlock/StickyPurchaseBar';
 import { CheckoutModal } from '../components/CheckoutModal';
+import { trackStandardMetaEvent } from '../utils/metaPixel';
 
 export const UnlockPage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +28,10 @@ export const UnlockPage: React.FC = () => {
     : profile?.username || 'o usuário';
 
   const handleOpenCheckout = () => {
+    trackStandardMetaEvent('InitiateCheckout', {
+      path: '/unlock',
+      funnel_version: 'current',
+    });
     window.location.href = 'https://checkout.perfectpay.com.br/pay/PPU38CQGK8M?';
   };
 
@@ -119,3 +124,5 @@ export const UnlockPage: React.FC = () => {
     </div>
   );
 };
+
+export default UnlockPage;

@@ -1,174 +1,354 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock, Send, Shield, Zap } from 'lucide-react';
+import {
+  ChevronLeft,
+  Phone,
+  Video,
+  Camera,
+  Mic,
+  Image as ImageIcon,
+  Smile,
+  Heart,
+  Lock,
+  User,
+  Sparkles,
+} from 'lucide-react';
 import { getEspiaProfile } from '../services/espiaSession';
-import { SocialAppShell } from '../components/social/SocialAppShell';
-import { BlockedPopup } from '../components/social/BlockedPopup';
-import { CheckoutModal } from '../components/CheckoutModal';
+import { CHAT_MOCKS, ChatMessage, getChatMockWithTargetName } from '../data/chatMocks';
+import { AudioMessageCard } from '../components/inbox/AudioMessageCard';
+import { SensitiveMediaCard } from '../components/inbox/SensitiveMediaCard';
+import { VipGateModalDM } from '../components/inbox/VipGateModalDM';
+import { SensitiveTextSpan } from '../components/social/SensitiveTextSpan';
+import { maskUsername } from '../components/social/SocialStoriesRow';
+import { getSearchedProfileDisplayName } from '../utils/profileName';
 
 export const ChatPage: React.FC = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
   const profile = getEspiaProfile();
 
-  const [isBlockedOpen, setIsBlockedOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isVipModalOpen, setIsVipModalOpen] = useState(false);
+  const [vipTitle, setVipTitle] = useState('Acesso VIP Requerido');
+  const [vipDescription, setVipDescription] = useState(
+    'Para ver toda a conversa sem censura, desbloqueie o acesso VIP.'
+  );
 
-  if (!profile) {
-    navigate('/');
-    return null;
-  }
+  const targetFirstName = getSearchedProfileDisplayName(profile);
+  const related = (profile?.relatedProfiles || []).filter((p) => p && p.username);
 
-  // Derive masked name from chatId
-  const maskedNames: Record<string, string> = {
-    chat_1: 'a******',
-    chat_2: 'bia****',
-    chat_3: 'luc****',
-    chat_4: 'car****',
-    chat_5: 'fer****',
-    chat_6: 'gab****',
+  // Get current mock chat data from fixture with dynamic target name
+  const currentMock = getChatMockWithTargetName(chatId || 'chat_1', targetFirstName);
+
+  // Resolve dynamic avatar & name for participant matching DirectPage shifted index
+  const getParticipantInfo = () => {
+    let dmSlot = 0;
+    if (chatId === 'chat_2') dmSlot = 1;
+    if (chatId === 'chat_3') dmSlot = 2;
+
+    const index = related.length > 0 ? (dmSlot + 3) % related.length : dmSlot;
+    const rel = related[index];
+    const name = rel?.username ? maskUsername(rel.username) : currentMock.fallbackName;
+    const avatar = rel?.profilePicture || '';
+
+    return { name, avatar };
   };
 
-  const currentMaskedName = chatId ? maskedNames[chatId] || 'contato_oculto' : 'contato_oculto';
+  const participant = getParticipantInfo();
+
+  const triggerVip = (title: string, description: string) => {
+    setVipTitle(title);
+    setVipDescription(description);
+    setIsVipModalOpen(true);
+  };
 
   return (
-    <SocialAppShell profile={profile} onBackToSearch={() => navigate('/')}>
-      <div className="w-full bg-[#080A0D] min-h-[70vh] flex flex-col justify-between select-none">
-        
-        {/* Chat Top Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#262A30] bg-[#080A0D] sticky top-14 md:top-0 z-20">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/direct')}
-              className="p-1 -ml-1 text-neutral-300 hover:text-white transition-colors cursor-pointer"
-              aria-label="Voltar para mensagens"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-
-            {/* Synthetic blurred avatar */}
-            <div className="relative w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-tr from-indigo-950 to-purple-950 shrink-0 border border-neutral-700">
-              <div
-                className="w-full h-full scale-125 bg-gradient-to-br from-indigo-800 via-purple-900 to-slate-950"
-                style={{ filter: 'blur(12px) brightness(0.5)' }}
-              />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <Lock className="w-3 h-3 text-white" />
-              </div>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm text-white font-mono">
-                {currentMaskedName}
-              </span>
-              <span className="text-[10px] text-[#22C55E] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
-                Atividade recente detectada
-              </span>
-            </div>
-          </div>
-
+    <div className="min-h-screen bg-[#030b14] text-[#F5F5F7] select-none flex flex-col justify-between font-sans relative">
+      
+      {/* 1. TOP HEADER */}
+      <header className="sticky top-0 z-30 bg-[#030b14]/95 border-b border-white/[0.08] backdrop-blur-md px-3.5 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2.5 min-w-0">
           <button
             type="button"
-            onClick={() => setIsBlockedOpen(true)}
-            className="text-xs font-semibold text-[#EC4899] hover:underline cursor-pointer"
+            onClick={() => navigate('/direct')}
+            className="p-1 -ml-1 text-white hover:text-neutral-300 transition-colors cursor-pointer"
+            aria-label="Voltar"
           >
-            Desbloquear
+            <ChevronLeft className="w-6 h-6 stroke-[2.2]" />
+          </button>
+
+          {/* Contact Avatar */}
+          <div className="relative w-9 h-9 rounded-full overflow-hidden bg-[#1F242D] border border-white/10 shrink-0 flex items-center justify-center">
+            {participant.avatar ? (
+              <img
+                src={
+                  participant.avatar.startsWith('/api/instagram/') ||
+                  !participant.avatar.startsWith('http')
+                    ? participant.avatar
+                    : `/api/instagram/profile-image?url=${encodeURIComponent(
+                        participant.avatar
+                      )}`
+                }
+                alt={participant.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="w-5 h-5 text-neutral-400" />
+            )}
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#22C55E] border-2 border-[#030b14]" />
+          </div>
+
+          {/* Contact Name & Status */}
+          <div className="flex flex-col min-w-0 text-left">
+            <span className="font-bold text-[15px] text-white tracking-tight leading-tight truncate">
+              {participant.name}
+            </span>
+            <span className="text-[11px] text-[#22C55E] font-medium flex items-center gap-1 leading-tight mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
+              Online
+            </span>
+          </div>
+        </div>
+
+        {/* Action Call Icons */}
+        <div className="flex items-center gap-4 text-white">
+          <button
+            type="button"
+            onClick={() =>
+              triggerVip(
+                'Chamada Restrita',
+                'Para ver toda a conversa e realizar chamadas sem censura, desbloqueie o acesso VIP.'
+              )
+            }
+            className="p-1 text-white hover:text-[#3797F0] transition-colors cursor-pointer"
+            aria-label="Chamada de voz"
+          >
+            <Phone className="w-5 h-5 stroke-[1.8]" />
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              triggerVip(
+                'Chamada em Vídeo Restrita',
+                'Para ver toda a conversa e realizar chamadas em vídeo sem censura, desbloqueie o acesso VIP.'
+              )
+            }
+            className="p-1 text-white hover:text-[#3797F0] transition-colors cursor-pointer"
+            aria-label="Chamada de vídeo"
+          >
+            <Video className="w-5 h-5 stroke-[1.8]" />
+          </button>
+        </div>
+      </header>
+
+      {/* 2. CHAT MESSAGES BODY */}
+      <main className="flex-1 w-full max-w-[500px] mx-auto px-4 py-5 pb-28 space-y-3.5">
+        
+        {/* Top History Locked Gate Banner */}
+        <div
+          onClick={() =>
+            triggerVip(
+              'Histórico Completo VIP',
+              'Para ver toda a conversa sem censura, desbloqueie o acesso VIP.'
+            )
+          }
+          className="mx-auto my-2 p-3 rounded-xl bg-[#12161F]/90 border border-white/10 text-center text-xs text-neutral-300 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-white/20 transition-all shadow-md"
+        >
+          <div className="flex items-center gap-1.5 text-neutral-400 font-medium">
+            <Lock className="w-3.5 h-3.5 text-[#3797F0]" />
+            <span>Para ver toda a conversa sem censura, desbloqueie o acesso VIP.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              triggerVip(
+                'Histórico Completo VIP',
+                'Para ver toda a conversa sem censura, desbloqueie o acesso VIP.'
+              )
+            }
+            className="text-[11.5px] font-bold text-[#3797F0] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <Sparkles className="w-3 h-3 fill-[#3797F0]" />
+            <span>Ver Histórico Completo</span>
           </button>
         </div>
 
-        {/* Chat Bubble Area with central lock overlay */}
-        <div 
-          onClick={() => setIsBlockedOpen(true)}
-          className="relative flex-1 p-4 space-y-4 overflow-hidden min-h-[360px] cursor-pointer group"
-        >
-          {/* Simulated blurred messages */}
-          <div className="space-y-3 pointer-events-none opacity-40 select-none" style={{ filter: 'blur(8px)' }}>
-            <div className="flex justify-start">
-              <div className="max-w-[70%] p-3 rounded-2xl rounded-tl-sm bg-[#101318] text-white text-xs">
-                Oi! Você viu aquilo que te mandei mais cedo?
-              </div>
-            </div>
+        {/* Date Timestamp Divider */}
+        <div className="flex items-center justify-center my-4">
+          <span className="text-[11px] text-neutral-500 font-semibold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-white/[0.03]">
+            {chatId === 'chat_3' ? 'Ontem 22:30' : chatId === 'chat_2' ? 'Hoje 11:00' : 'Hoje 14:02'}
+          </span>
+        </div>
 
-            <div className="flex justify-end">
-              <div className="max-w-[70%] p-3 rounded-2xl rounded-tr-sm bg-[#3B82F6] text-white text-xs">
-                Acabei de ver aqui... não acredito haha
-              </div>
-            </div>
+        {/* Message Items Stream */}
+        {currentMock.messages.map((msg: ChatMessage) => {
+          return (
+            <React.Fragment key={msg.id}>
+              {msg.sender === 'received' ? (
+                /* RECEIVED MESSAGE (LEFT ALIGNED) */
+                <div className="flex flex-col items-start space-y-1">
+                  {msg.type === 'audio' && (
+                    <AudioMessageCard
+                      duration={msg.audioDuration || '0:32'}
+                      onTranscriptionClick={() =>
+                        triggerVip(
+                          'Áudio Restrito',
+                          'Desbloqueie o VIP para ouvir o áudio completo.'
+                        )
+                      }
+                    />
+                  )}
 
-            <div className="flex justify-start">
-              <div className="max-w-[70%] p-3 rounded-2xl rounded-tl-sm bg-[#101318] text-white text-xs">
-                Depois me conta o que você achou de verdade.
-              </div>
-            </div>
+                  {msg.type === 'media' && (
+                    <SensitiveMediaCard
+                      onMediaClick={() =>
+                        triggerVip(
+                          'Mídia Bloqueada',
+                          'Desbloqueie o VIP para visualizar a mídia completa.'
+                        )
+                      }
+                      reactionEmoji={msg.reaction}
+                      imagePreset={msg.imagePreset}
+                    />
+                  )}
 
-            <div className="flex justify-end">
-              <div className="max-w-[70%] p-3 rounded-2xl rounded-tr-sm bg-[#3B82F6] text-white text-xs">
-                Pode deixar, te mando um áudio já já!
-              </div>
-            </div>
-          </div>
+                  {msg.type === 'text' && msg.text && (
+                    <div className="relative max-w-[80%] px-3.5 py-2 rounded-[20px] rounded-tl-[4px] bg-[#262626] text-white text-[14px] leading-relaxed shadow-sm">
+                      <SensitiveTextSpan text={msg.text} />
+                      {msg.reaction && (
+                        <div className="absolute -bottom-2.5 -right-1.5 bg-[#1C1C1E] border border-white/10 rounded-full px-1.5 py-0.5 text-[11px] flex items-center gap-0.5 shadow-md">
+                          <span>{msg.reaction}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* SENT MESSAGE (RIGHT ALIGNED) */
+                <div className="flex flex-col items-end space-y-1">
+                  {msg.type === 'heart' ? (
+                    <div
+                      className="text-4xl py-0.5 select-none cursor-pointer hover:scale-105 transition-transform"
+                      onClick={() =>
+                        triggerVip(
+                          'Conversa VIP',
+                          'Para ver toda a conversa sem censura, desbloqueie o acesso VIP.'
+                        )
+                      }
+                    >
+                      ❤️
+                    </div>
+                  ) : (
+                    <div className="relative max-w-[80%] px-3.5 py-2 rounded-[20px] rounded-tr-[4px] bg-[#3797F0] text-white text-[14px] leading-relaxed shadow-sm">
+                      {msg.text && <SensitiveTextSpan text={msg.text} />}
+                    </div>
+                  )}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </main>
 
-          {/* Central Lock Overlay */}
-          <div className="absolute inset-0 bg-[#080A0D]/75 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center space-y-3">
-            <div className="w-14 h-14 rounded-full bg-[#101318] border border-[#262A30] shadow-[0_0_25px_rgba(0,0,0,0.9)] flex items-center justify-center text-white group-hover:scale-105 transition-transform">
-              <Lock className="w-6 h-6 text-[#EC4899]" />
-            </div>
+      {/* 3. FIXED BOTTOM INPUT BAR */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-[#030b14]/95 border-t border-white/[0.08] backdrop-blur-md p-3 z-30">
+        <div className="max-w-[500px] mx-auto flex items-center gap-2 bg-[#1F242D] border border-white/10 rounded-full px-2.5 py-1.5 shadow-lg">
+          
+          {/* Left Camera Button */}
+          <button
+            type="button"
+            onClick={() =>
+              triggerVip(
+                'Envio de Mídia Restrito',
+                'Para responder e enviar mensagens sem censura, desbloqueie o acesso VIP.'
+              )
+            }
+            className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#7000FF] to-[#3797F0] flex items-center justify-center text-white shrink-0 cursor-pointer hover:opacity-90 active:scale-95 transition-all shadow-md"
+            aria-label="Câmera"
+          >
+            <Camera className="w-4 h-4 text-white" />
+          </button>
 
-            <div className="space-y-1 max-w-xs">
-              <h4 className="text-base font-bold text-white tracking-tight">
-                Conversa Criptografada
-              </h4>
-              <p className="text-xs text-neutral-400">
-                Histórico completo de áudios, mídias temporárias e mensagens disponível para membros VIP.
-              </p>
-            </div>
+          {/* Message Placeholder Input */}
+          <input
+            type="text"
+            readOnly
+            onClick={() =>
+              triggerVip(
+                'Envio de Mensagem Restrito',
+                'Para responder e enviar mensagens sem censura, desbloqueie o acesso VIP.'
+              )
+            }
+            placeholder="Mensagem..."
+            className="flex-1 bg-transparent text-white text-[14px] placeholder:text-neutral-400 outline-none px-2 cursor-pointer"
+          />
 
+          {/* Right Action Icons */}
+          <div className="flex items-center gap-2 text-neutral-300 pr-1">
             <button
               type="button"
-              onClick={() => setIsCheckoutOpen(true)}
-              className="py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[#F97316] via-[#EC4899] to-[#9333EA] hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(236,72,153,0.35)] flex items-center gap-1.5 cursor-pointer"
+              onClick={() =>
+                triggerVip(
+                  'Áudio Restrito',
+                  'Desbloqueie o VIP para ouvir e enviar áudios completos.'
+                )
+              }
+              className="p-1 hover:text-white transition-colors cursor-pointer"
+              aria-label="Áudio"
             >
-              <Zap className="w-3.5 h-3.5 fill-white" />
-              <span>Desbloquear Histórico Completo</span>
+              <Mic className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                triggerVip(
+                  'Mídia Restrita',
+                  'Desbloqueie o VIP para visualizar e enviar fotos sem censura.'
+                )
+              }
+              className="p-1 hover:text-white transition-colors cursor-pointer"
+              aria-label="Galeria"
+            >
+              <ImageIcon className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                triggerVip(
+                  'Stickers Restritos',
+                  'Desbloqueie o VIP para enviar stickers e reações sem censura.'
+                )
+              }
+              className="p-1 hover:text-white transition-colors cursor-pointer"
+              aria-label="Stickers"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                triggerVip(
+                  'Interação Restrita',
+                  'Desbloqueie o VIP para enviar interações sem censura.'
+                )
+              }
+              className="p-1 hover:text-[#EC4899] transition-colors cursor-pointer"
+              aria-label="Enviar coração"
+            >
+              <Heart className="w-5 h-5 text-white fill-white" />
             </button>
           </div>
         </div>
+      </footer>
 
-        {/* Input Bar (Disabled with VIP notice) */}
-        <div className="p-3 border-t border-[#262A30] bg-[#080A0D]">
-          <div className="flex items-center gap-2 p-2 rounded-xl bg-[#101318] border border-[#262A30] opacity-80 cursor-not-allowed">
-            <Lock className="w-4 h-4 text-neutral-500 ml-2 shrink-0" />
-            <span className="text-xs text-neutral-500 flex-1">
-              Envio e visualização liberados no VIP...
-            </span>
-            <div className="p-1.5 rounded-lg bg-neutral-800 text-neutral-600">
-              <Send className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Blocked popup */}
-      <BlockedPopup
-        isOpen={isBlockedOpen}
-        onClose={() => setIsBlockedOpen(false)}
-        onVirarVip={() => {
-          setIsBlockedOpen(false);
-          setIsCheckoutOpen(true);
-        }}
-        title="Mensagens Criptografadas"
-        description="Acesso ao histórico de mensagens diretas e áudios disponível no plano VIP do Espia Aí."
+      {/* 4. VIP GATE MODAL */}
+      <VipGateModalDM
+        isOpen={isVipModalOpen}
+        onClose={() => setIsVipModalOpen(false)}
+        title={vipTitle}
+        description={vipDescription}
       />
-
-      {/* Checkout Modal */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        planName={`Desbloqueio de Chat · @${profile.username}`}
-      />
-    </SocialAppShell>
+    </div>
   );
 };
+
+export default ChatPage;

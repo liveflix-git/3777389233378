@@ -12,7 +12,8 @@ export const RestrictedPreviewFeed: React.FC<RestrictedPreviewFeedProps> = ({
   profile,
   onBlockedClick,
 }) => {
-  // Default configs for varied blocked preview posts (masked identities, protected synthetic avatars, blurred real images)
+  // Deterministic fixture configs for varied blocked preview posts
+  // Covers all 4 combinations: (liked+saved), (liked only), (saved only), (neither)
   const feedConfigs = [
     {
       maskedUsername: 'adr******',
@@ -24,19 +25,27 @@ export const RestrictedPreviewFeed: React.FC<RestrictedPreviewFeedProps> = ({
     },
     {
       maskedUsername: 'luc******',
-      previewAge: 'há 8 horas',
+      previewAge: 'há 18 horas',
       previewImageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop&q=80',
-      likedPreview: false,
+      likedPreview: true,
       savedPreview: true,
       previewCounts: { likes: 128, comments: 12, shares: 5 },
     },
     {
       maskedUsername: 'bia******',
-      previewAge: 'há 2 dias',
+      previewAge: 'há 1 dia',
       previewImageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80',
-      likedPreview: true,
+      likedPreview: false,
       savedPreview: true,
       previewCounts: { likes: 42, comments: 2, shares: 1 },
+    },
+    {
+      maskedUsername: 'mar******',
+      previewAge: 'há 2 dias',
+      previewImageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80',
+      likedPreview: false,
+      savedPreview: false,
+      previewCounts: { likes: 195, comments: 18, shares: 8 },
     },
   ];
 
@@ -54,8 +63,6 @@ export const RestrictedPreviewFeed: React.FC<RestrictedPreviewFeedProps> = ({
       {feedConfigs.map((cfg, idx) => {
         const isLast = idx === feedConfigs.length - 1;
 
-        // Visual preview separation:
-        // authorVisual: real related profile from Apify + YepAPI
         const previewAuthor = relatedProfiles.length > 0
           ? relatedProfiles[idx % relatedProfiles.length]
           : null;
@@ -65,9 +72,6 @@ export const RestrictedPreviewFeed: React.FC<RestrictedPreviewFeedProps> = ({
           maskedUsername: previewAuthor ? maskUsername(previewAuthor.username) : cfg.maskedUsername,
         };
 
-        // Media priority:
-        // 1. Real public media from public related profile if available
-        // 2. Demo fixture
         const publicMedia = publicMediaList[idx]?.imageUrl || cfg.previewImageUrl;
 
         return (

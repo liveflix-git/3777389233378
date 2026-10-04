@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { MatrixBackground } from './components/MatrixBackground';
 import { EspiaHeroScreen } from './components/EspiaHeroScreen';
 import { InteractiveScannerModal } from './components/InteractiveScannerModal';
+import { FunnelRouteTracker } from './components/FunnelRouteTracker';
 import { FeedPage } from './pages/FeedPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { DirectPage } from './pages/DirectPage';
@@ -157,6 +158,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <RouteNormalizer />
+        <FunnelRouteTracker />
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />

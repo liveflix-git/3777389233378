@@ -29,7 +29,7 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
   onBlockedClick,
   isLast = false,
 }) => {
-  // Internal tracking tags - strictly isolated from target profile data
+  // Internal tracking tags
   const origin: DataOrigin = 'ui-preview';
   const interactionOrigin = 'ui-preview';
 
@@ -41,8 +41,17 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
     setAvatarErr(false);
   }, [authorAvatar]);
 
+  // Local interactive states initialized deterministically from props
   const [isLiked, setIsLiked] = useState(likedPreview);
   const [isBookmarked, setIsBookmarked] = useState(savedPreview);
+
+  React.useEffect(() => {
+    setIsLiked(likedPreview);
+  }, [likedPreview]);
+
+  React.useEffect(() => {
+    setIsBookmarked(savedPreview);
+  }, [savedPreview]);
 
   const likesCount = previewCounts.likes
     ? previewCounts.likes + (isLiked && !likedPreview ? 1 : !isLiked && likedPreview ? -1 : 0)
@@ -54,7 +63,7 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
       data-interaction-origin={interactionOrigin}
       className={`w-full bg-[#080B0E] ${!isLast ? 'border-b border-[#20242A]' : ''}`}
     >
-      {/* 1. Header (Masked User + Real or Synthetic Avatar) */}
+      {/* 1. Header (Masked User + Avatar) */}
       <div className="h-[54px] flex items-center justify-between px-[14px] py-2">
         <div
           onClick={onBlockedClick}
@@ -95,22 +104,19 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
         </button>
       </div>
 
-      {/* 2. Large Restricted Content Media Area with Real Blurred Photo */}
+      {/* 2. Content Media Area */}
       <div
         onClick={onBlockedClick}
         className="relative w-full min-h-[320px] sm:min-h-[380px] bg-[#0A0E12] border-y border-[#24282E]/40 flex flex-col items-center justify-center p-8 text-center cursor-pointer group select-none overflow-hidden"
       >
-        {/* Extremely Blurred Real Background Image */}
         <img
           src={previewImageUrl}
           alt="Conteúdo restrito"
           className="absolute inset-0 w-full h-full object-cover filter blur-[24px] brightness-[0.38] scale-110 pointer-events-none transition-transform duration-500 group-hover:scale-115"
         />
 
-        {/* Dark vignette gradient overlay over image */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50 pointer-events-none" />
 
-        {/* Lock & Lock Details */}
         <div className="relative z-10 flex flex-col items-center justify-center space-y-3">
           <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md border border-white/20 shadow-[0_4px_30px_rgba(0,0,0,0.8)] flex items-center justify-center text-white group-hover:scale-105 active:scale-95 transition-transform duration-200">
             <Lock className="w-8 h-8 text-white/90" />
@@ -130,17 +136,26 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
       {/* 3. Action Bar */}
       <div className="px-[14px] py-[12px] flex items-center text-white justify-between">
         <div className="flex items-center gap-[14px]">
-          {/* Heart: 24px - Triggers VIP popup */}
+          {/* Heart / Like Button */}
           <button
             type="button"
-            onClick={onBlockedClick}
-            className="transition-colors active:scale-90 cursor-pointer p-0.5 -ml-0.5 text-white hover:text-[#EC4899]"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsLiked((prev) => !prev);
+            }}
+            className="transition-colors active:scale-90 cursor-pointer p-0.5 -ml-0.5"
             aria-label="Curtir"
           >
-            <Heart className="w-[24px] h-[24px] stroke-[1.8]" />
+            <Heart
+              className={`w-[24px] h-[24px] stroke-[1.8] transition-all ${
+                isLiked
+                  ? 'text-red-500 fill-red-500'
+                  : 'text-white hover:text-neutral-300'
+              }`}
+            />
           </button>
 
-          {/* MessageCircle: 23px */}
+          {/* Comment */}
           <button
             type="button"
             onClick={onBlockedClick}
@@ -150,7 +165,7 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
             <MessageCircle className="w-[23px] h-[23px] stroke-[1.8]" />
           </button>
 
-          {/* Send: 23px */}
+          {/* Send */}
           <button
             type="button"
             onClick={onBlockedClick}
@@ -161,14 +176,23 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
           </button>
         </div>
 
-        {/* Bookmark: 23px - Triggers VIP popup */}
+        {/* Bookmark / Save Button */}
         <button
           type="button"
-          onClick={onBlockedClick}
-          className="transition-colors active:scale-90 cursor-pointer p-0.5 text-white hover:text-neutral-300"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsBookmarked((prev) => !prev);
+          }}
+          className="transition-colors active:scale-90 cursor-pointer p-0.5"
           aria-label="Salvar"
         >
-          <Bookmark className="w-[23px] h-[23px] stroke-[1.8]" />
+          <Bookmark
+            className={`w-[23px] h-[23px] stroke-[1.8] transition-all ${
+              isBookmarked
+                ? 'text-white fill-white'
+                : 'text-white hover:text-neutral-300'
+            }`}
+          />
         </button>
       </div>
 
@@ -176,7 +200,14 @@ export const RestrictedPreviewPost: React.FC<RestrictedPreviewPostProps> = ({
       {likesCount !== null && (
         <div className="px-[14px] pb-3 text-xs text-[#F5F5F5] font-semibold leading-snug space-y-1">
           <div onClick={onBlockedClick} className="cursor-pointer hover:underline">
-            {likesCount.toLocaleString('pt-BR')} curtidas
+            {isLiked ? (
+              <span>
+                Curtido por <strong className="text-white">você</strong> e outras{' '}
+                {likesCount > 1 ? (likesCount - 1).toLocaleString('pt-BR') : 'pessoas'}
+              </span>
+            ) : (
+              <span>{likesCount.toLocaleString('pt-BR')} curtidas</span>
+            )}
           </div>
           <div
             onClick={onBlockedClick}

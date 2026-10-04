@@ -116,6 +116,9 @@ const RestrictedPostCard: React.FC<RestrictedPostCardProps> = ({
   avatarErr,
   setAvatarErr,
 }) => {
+  const [isLiked, setIsLiked] = useState(true);
+  const [isSaved, setIsSaved] = useState(false);
+
   return (
     <div className="w-full bg-[#000000]">
       {/* Post Author Header */}
@@ -151,18 +154,16 @@ const RestrictedPostCard: React.FC<RestrictedPostCardProps> = ({
         </button>
       </div>
 
-      {/* Central Restricted Content Canvas (Like the reference image) */}
+      {/* Central Restricted Content Canvas */}
       <div
         onClick={onUnlock}
         className="relative w-full aspect-square bg-gradient-to-b from-[#0A0D14] via-[#050507] to-[#000000] border-y border-neutral-900 flex flex-col items-center justify-center p-6 text-center cursor-pointer group select-none overflow-hidden"
       >
-        {/* Subtle blurred abstract background (no identifiable faces) */}
         <div
           className="absolute inset-0 bg-gradient-to-tr from-indigo-950/20 via-purple-950/25 to-slate-950/30 scale-125"
           style={{ filter: 'blur(16px)' }}
         />
 
-        {/* Central Lock and Restricted Notice */}
         <div className="relative z-10 flex flex-col items-center justify-center space-y-3">
           <div className="w-16 h-16 rounded-full bg-neutral-900/90 border border-neutral-700/80 shadow-[0_0_30px_rgba(0,0,0,0.85)] flex items-center justify-center text-white group-hover:scale-105 active:scale-95 transition-transform duration-200">
             <Lock className="w-7 h-7 text-white" />
@@ -183,25 +184,61 @@ const RestrictedPostCard: React.FC<RestrictedPostCardProps> = ({
       <div className="px-4 py-3 space-y-2.5">
         <div className="flex items-center justify-between text-white">
           <div className="flex items-center gap-4">
-            <button type="button" className="hover:text-[#EF4444] transition-colors active:scale-90" aria-label="Curtir">
-              <Heart className="w-6 h-6 stroke-[1.8]" />
+            <button
+              type="button"
+              onClick={() => setIsLiked((prev) => !prev)}
+              className="transition-colors active:scale-90 cursor-pointer"
+              aria-label="Curtir"
+            >
+              <Heart
+                className={`w-6 h-6 stroke-[1.8] transition-all ${
+                  isLiked ? 'text-red-500 fill-red-500' : 'text-white hover:text-neutral-300'
+                }`}
+              />
             </button>
-            <button type="button" className="hover:text-neutral-300 transition-colors active:scale-90" aria-label="Comentar">
+            <button
+              type="button"
+              onClick={onUnlock}
+              className="hover:text-neutral-300 transition-colors active:scale-90 cursor-pointer"
+              aria-label="Comentar"
+            >
               <MessageCircle className="w-6 h-6 stroke-[1.8]" />
             </button>
-            <button type="button" className="hover:text-[#3B82F6] transition-colors active:scale-90" aria-label="Compartilhar">
+            <button
+              type="button"
+              onClick={onUnlock}
+              className="hover:text-[#3B82F6] transition-colors active:scale-90 cursor-pointer"
+              aria-label="Compartilhar"
+            >
               <Send className="w-6 h-6 stroke-[1.8] -rotate-12" />
             </button>
           </div>
 
-          <button type="button" className="hover:text-neutral-300 transition-colors active:scale-90" aria-label="Salvar">
-            <Bookmark className="w-6 h-6 stroke-[1.8]" />
+          <button
+            type="button"
+            onClick={() => setIsSaved((prev) => !prev)}
+            className="transition-colors active:scale-90 cursor-pointer"
+            aria-label="Salvar"
+          >
+            <Bookmark
+              className={`w-6 h-6 stroke-[1.8] transition-all ${
+                isSaved ? 'text-white fill-white' : 'text-white hover:text-neutral-300'
+              }`}
+            />
           </button>
         </div>
 
         {/* Masked Likes Preview */}
         <div className="text-xs sm:text-[13px] text-neutral-300 font-normal">
-          Curtido por <span className="font-semibold text-white font-mono-tech">a******</span> e <span className="font-semibold text-white">outras pessoas</span>
+          {isLiked ? (
+            <span>
+              Curtido por <strong className="text-white">você</strong> e outras pessoas
+            </span>
+          ) : (
+            <span>
+              Curtido por <span className="font-semibold text-white font-mono-tech">a******</span> e <span className="font-semibold text-white">outras pessoas</span>
+            </span>
+          )}
         </div>
 
         {/* Caption */}

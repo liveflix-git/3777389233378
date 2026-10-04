@@ -41,7 +41,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onSelectPlan }) 
 
             <div className="pt-2 flex items-baseline gap-1">
               <span className="text-sm font-semibold text-[#9CA3AF]">R$</span>
-              <span className="font-display text-4xl font-extrabold text-white">29,90</span>
+              <span className="font-display text-4xl font-extrabold text-white">34,79</span>
               <span className="text-xs text-[#9CA3AF]">/ pagamento único</span>
             </div>
 
@@ -106,38 +106,33 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onSelectPlan }) 
 
             <ul className="space-y-3 pt-4 border-t border-[rgba(139,92,246,0.12)] text-xs text-[#9CA3AF]">
               <li className="flex items-center gap-2 text-white">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Perfis Ilimitados para Investigar
+                <Check className="w-4 h-4 text-[#8B5CF6]" />
+                Dossiês Ilimitados de Perfis Ilimitados
               </li>
               <li className="flex items-center gap-2 text-white">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Alertas Instantâneos de Novos Seguidos
+                <Check className="w-4 h-4 text-[#8B5CF6]" />
+                Alertas em Tempo Real no Painel
               </li>
               <li className="flex items-center gap-2 text-white">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Visualizador Fantasma de Stories Sem Rastro
+                <Check className="w-4 h-4 text-[#8B5CF6]" />
+                Busca Avançada por Mídias Sociais
               </li>
               <li className="flex items-center gap-2 text-white">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Garantia Incondicional de 7 Dias
+                <Check className="w-4 h-4 text-[#8B5CF6]" />
+                Suporte Prioritário 24/7 no WhatsApp
               </li>
             </ul>
           </div>
 
           <button
             onClick={() => onSelectPlan('Passaporte VIP')}
-            className="w-full py-4 px-6 rounded-2xl font-bold text-sm uppercase tracking-wider text-white bg-gradient-to-r from-[#8B5CF6] via-[#9333EA] to-[#A855F7] hover:brightness-110 shadow-[0_0_25px_rgba(139,92,246,0.5)] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-6 rounded-2xl font-bold text-xs uppercase tracking-wider text-white bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.4)]"
           >
-            <span>Desbloquear Acesso Ilimitado</span>
-            <Zap className="w-4 h-4 fill-white" />
+            <span>Quero Acesso VIP Ilimitado</span>
+            <Zap className="w-4 h-4" />
           </button>
         </div>
 
-      </div>
-
-      <div className="mt-8 text-center text-xs text-[#9CA3AF] flex items-center justify-center gap-2">
-        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-        <span>Garantia de 7 dias com devolução integral do valor se não ficar satisfeito.</span>
       </div>
     </section>
   );

@@ -9,7 +9,7 @@ import { SuccessToast } from './SuccessToast';
 export const PreparationScreen: React.FC = () => {
   const navigate = useNavigate();
   const savedProfile = getEspiaProfile();
-  const username = savedProfile?.username || 'felp_gomes7';
+  const username = savedProfile?.username || '';
 
   const [phase, setPhase] = useState<'trying' | 'success'>('trying');
   const [showToast, setShowToast] = useState(false);

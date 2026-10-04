@@ -12,7 +12,7 @@ export interface MessagePreviewToastProps {
 export const MessagePreviewToast: React.FC<MessagePreviewToastProps> = ({
   appTitle = 'Instagram',
   senderName = 'Fer*****',
-  previewText = '"teste adivinha o que vc\nesqueceu aqui? kkkkk"',
+  previewText = '"adivinha o que vc\nesqueceu aqui? kkkkk"',
   timestampLabel = 'Agora',
   onClose,
   onClick,

@@ -9,10 +9,10 @@ interface OfferCardProps {
 
 export const OfferCard: React.FC<OfferCardProps> = ({
   username,
-  targetName = 'teste',
+  targetName = '',
   onOpenCheckout,
 }) => {
-  const displayName = targetName || username;
+  const displayName = targetName || username || 'o usuário';
 
   const benefits = [
     `Todas as mensagens do direct de ${displayName}`,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { getEspiaProfile } from '../services/espiaSession';
+import { getSearchedProfileDisplayName } from '../utils/profileName';
 import { SocialAppShell } from '../components/social/SocialAppShell';
 import { SocialStoriesRow } from '../components/social/SocialStoriesRow';
 import { SocialFeedArea } from '../components/social/SocialFeedArea';
@@ -17,16 +18,19 @@ export const FeedPage: React.FC = () => {
   const [showNotificationToast, setShowNotificationToast] = useState(false);
 
   useEffect(() => {
-    // Show notification toast once per preview session after ~1600ms delay
-    const toastShown = sessionStorage.getItem('espia_toast_shown');
+    if (!profile) return;
+
+    // Show notification toast once per profile search session after ~1600ms delay
+    const sessionKey = `espia_toast_shown_${profile.username}`;
+    const toastShown = sessionStorage.getItem(sessionKey);
     if (!toastShown) {
       const timer = setTimeout(() => {
         setShowNotificationToast(true);
-        sessionStorage.setItem('espia_toast_shown', 'true');
+        sessionStorage.setItem(sessionKey, 'true');
       }, 1600);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [profile]);
 
   // If no profile was looked up, redirect to unlock
   if (!profile) {
@@ -44,7 +48,7 @@ export const FeedPage: React.FC = () => {
     navigate('/unlock');
   };
 
-  const targetFirstName = profile.fullName ? profile.fullName.split(' ')[0] : 'teste';
+  const targetFirstName = getSearchedProfileDisplayName(profile);
 
   return (
     <SocialAppShell profile={profile} onBlockedClick={handleOpenBlocked}>
@@ -104,3 +108,5 @@ export const FeedPage: React.FC = () => {
     </SocialAppShell>
   );
 };
+
+export default FeedPage;

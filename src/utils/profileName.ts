@@ -4,8 +4,8 @@
  */
 
 export interface ProfileLike {
-  fullName?: string;
-  username?: string;
+  fullName?: string | null;
+  username?: string | null;
 }
 
 export function getSearchedProfileDisplayName(profile?: ProfileLike | null): string {

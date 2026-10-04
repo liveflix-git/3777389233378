@@ -111,7 +111,7 @@ export const CreditsPage: React.FC = () => {
     if (pkg.checkoutUrl) {
       trackStandardMetaEvent('InitiateCheckout', {
         path: '/creditos',
-        package_name: pkg.name,
+        package_name: pkg.credits,
         funnel_version: 'current',
       });
       window.location.href = pkg.checkoutUrl;

@@ -269,75 +269,105 @@ async function handleInstagramProfile(request: Request, env: Env): Promise<Respo
 
     const normalizedData = normalizeApifyProfile(item);
 
-    // If Apify returned < 7 relatedProfiles and YEP_API_KEY is available, fetch similar profiles via YepAPI
-    if ((!normalizedData.relatedProfiles || normalizedData.relatedProfiles.length < 7) && env.YEP_API_KEY) {
-      try {
-        const yepRes = await fetch('https://api.yepapi.com/v1/instagram/user-similar', {
-          method: 'POST',
-          headers: {
-            'x-api-key': env.YEP_API_KEY.trim(),
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({ username: requested }),
-          signal: AbortSignal.timeout(10000),
+    // If Apify returned < 7 relatedProfiles, query YepAPI for similar profiles
+    const apifyRelatedCount = normalizedData.relatedProfiles ? normalizedData.relatedProfiles.length : 0;
+    const yepApiKey = (env.YEP_API_KEY || '').trim();
+    const yepKeyConfigured = Boolean(yepApiKey.length > 0);
+
+    if (apifyRelatedCount < 7) {
+      if (!yepKeyConfigured) {
+        console.error('[YEP CONFIG] YEP_API_KEY is not configured');
+      } else {
+        console.log('[YEP PROD]', {
+          username: requested,
+          keyConfigured: true,
         });
 
-        if (yepRes.ok) {
-          const yepJson = (await yepRes.json()) as any;
-          const rawList = Array.isArray(yepJson)
-            ? yepJson
-            : Array.isArray(yepJson.data)
-            ? yepJson.data
-            : Array.isArray(yepJson.users)
-            ? yepJson.users
-            : Array.isArray(yepJson.items)
-            ? yepJson.items
-            : [];
+        try {
+          const yepRes = await fetch('https://api.yepapi.com/v1/instagram/user-similar', {
+            method: 'POST',
+            headers: {
+              'x-api-key': yepApiKey,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ username: requested }),
+            signal: AbortSignal.timeout(10000),
+          });
 
-          if (Array.isArray(rawList) && rawList.length > 0) {
-            const seen = new Set<string>([requested]);
-            const merged: RelatedInstagramProfile[] = [];
+          if (yepRes.ok) {
+            const yepJson = (await yepRes.json()) as any;
+            const rawList = Array.isArray(yepJson)
+              ? yepJson
+              : Array.isArray(yepJson.data)
+              ? yepJson.data
+              : Array.isArray(yepJson.users)
+              ? yepJson.users
+              : Array.isArray(yepJson.items)
+              ? yepJson.items
+              : Array.isArray(yepJson.results)
+              ? yepJson.results
+              : [];
 
-            // Add existing Apify related profiles first
-            if (Array.isArray(normalizedData.relatedProfiles)) {
-              for (const p of normalizedData.relatedProfiles) {
-                const u = normalizeUsername(p.username);
-                if (u && !seen.has(u)) {
-                  seen.add(u);
-                  merged.push(p);
+            console.log('[YEP PROD RESULT]', {
+              username: requested,
+              status: yepRes.status,
+              count: rawList.length,
+            });
+
+            if (Array.isArray(rawList) && rawList.length > 0) {
+              const seen = new Set<string>([requested]);
+              const merged: RelatedInstagramProfile[] = [];
+
+              if (Array.isArray(normalizedData.relatedProfiles)) {
+                for (const p of normalizedData.relatedProfiles) {
+                  const u = normalizeUsername(p.username);
+                  if (u && !seen.has(u)) {
+                    seen.add(u);
+                    merged.push(p);
+                  }
                 }
               }
-            }
 
-            // Add YepAPI profiles
-            for (const r of rawList) {
-              if (merged.length >= 12) break;
-              if (!r || typeof r.username !== 'string') continue;
-              const u = normalizeUsername(r.username);
-              if (!u || seen.has(u)) continue;
-              seen.add(u);
+              for (const r of rawList) {
+                if (merged.length >= 12) break;
+                if (!r || typeof r.username !== 'string') continue;
+                const u = normalizeUsername(r.username);
+                if (!u || seen.has(u)) continue;
+                seen.add(u);
 
-              const pic = r.profile_pic_url_hd || r.profile_pic_url || r.profilePicUrl || '';
-              merged.push({
-                id: r.id ? String(r.id) : undefined,
-                username: u,
-                fullName: (r.full_name || r.fullName || '')?.trim() || undefined,
-                profilePicture: pic && pic.startsWith('http')
-                  ? `/api/instagram/profile-image?url=${encodeURIComponent(pic)}`
-                  : undefined,
-                isPrivate: Boolean(r.is_private ?? r.isPrivate),
-                isVerified: Boolean(r.is_verified ?? r.isVerified),
-              });
-            }
+                const pic = r.profile_pic_url_hd || r.profile_pic_url || r.profilePicUrl || '';
+                merged.push({
+                  id: r.id ? String(r.id) : undefined,
+                  username: u,
+                  fullName: (r.full_name || r.fullName || '')?.trim() || undefined,
+                  profilePicture: pic && pic.startsWith('http')
+                    ? `/api/instagram/profile-image?url=${encodeURIComponent(pic)}`
+                    : undefined,
+                  isPrivate: typeof r.is_private === 'boolean' ? r.is_private : typeof r.isPrivate === 'boolean' ? r.isPrivate : undefined,
+                  isVerified: typeof r.is_verified === 'boolean' ? r.is_verified : typeof r.isVerified === 'boolean' ? r.isVerified : undefined,
+                });
+              }
 
-            if (merged.length > 0) {
-              normalizedData.relatedProfiles = merged;
+              if (merged.length > 0) {
+                normalizedData.relatedProfiles = merged;
+              }
             }
+          } else {
+            const errText = await yepRes.text().catch(() => '');
+            console.warn('[YEP ERROR]', {
+              username: requested,
+              status: yepRes.status,
+              message: errText,
+            });
           }
+        } catch (yepErr: any) {
+          console.warn('[YEP ERROR]', {
+            username: requested,
+            status: 0,
+            message: yepErr?.message || String(yepErr),
+          });
         }
-      } catch (yepErr) {
-        console.warn('[InstagramProfileWorker] YepAPI fallback error:', yepErr);
       }
     }
 
@@ -550,7 +580,7 @@ export default {
       return handleInstagramProfile(request, env);
     }
 
-    // 3. API route: Accelerate Analysis (debits 45 credits in production Cloudflare Worker)
+    // 3. API route: Accelerate Analysis
     if (url.pathname === '/api/analysis/accelerate' || url.pathname.startsWith('/api/analysis/accelerate')) {
       return handleAccelerate(request);
     }
@@ -560,7 +590,7 @@ export default {
       return handleSpendCredits(request);
     }
 
-    // 3. Fallback for unmatched /api/* routes: MUST return JSON error, never index.html!
+    // 5. Fallback for unmatched /api/* routes: MUST return JSON error, never index.html!
     if (url.pathname.startsWith('/api/')) {
       return new Response(
         JSON.stringify({
@@ -575,26 +605,22 @@ export default {
       );
     }
 
-    // 4. Serve Static Assets with Internal SPA Fallback
+    // 6. Serve Static Assets with Internal SPA Fallback
     if (env.ASSETS) {
       const assetResponse = await env.ASSETS.fetch(request);
 
-      // If asset was found directly and is not an unintended HTTP redirect, return it
       const isRedirect = assetResponse.status >= 300 && assetResponse.status < 400;
       if (assetResponse.status !== 404 && !isRedirect) {
         return assetResponse;
       }
 
-      // 5. Internal SPA Fallback: Return /index.html with status 200 OK (never redirect URL)
       const indexRequest = new Request(new URL('/index.html', request.url), request);
       const indexResponse = await env.ASSETS.fetch(indexRequest);
 
-      // If indexResponse is already 200 OK, return it
       if (indexResponse.status === 200) {
         return indexResponse;
       }
 
-      // Ensure response is returned with 200 OK and no Location redirect header
       if (indexResponse.body) {
         const headers = new Headers(indexResponse.headers);
         headers.set('Content-Type', 'text/html; charset=utf-8');

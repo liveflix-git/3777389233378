@@ -41,7 +41,7 @@ export class YepSimilarProfilesProvider {
     const target = normalizeUsername(username);
     if (!target) return [];
 
-    const apiKey = (apiKeyOverride || process.env.YEP_API_KEY || 'yep_sk_638cce8f4ad8efbde2b42a3a1389c6ea2b8c5e1d238eeee3').trim();
+    const apiKey = (apiKeyOverride || process.env.YEP_API_KEY || '').trim();
     if (!apiKey) {
       console.warn('[YepAPI] YEP_API_KEY não configurada no ambiente.');
       return [];
@@ -130,7 +130,7 @@ export class YepSimilarProfilesProvider {
     const target = normalizeUsername(username);
     if (!target) return null;
 
-    const apiKey = (apiKeyOverride || process.env.YEP_API_KEY || 'yep_sk_638cce8f4ad8efbde2b42a3a1389c6ea2b8c5e1d238eeee3').trim();
+    const apiKey = (apiKeyOverride || process.env.YEP_API_KEY || '').trim();
     if (!apiKey) return null;
 
     try {
